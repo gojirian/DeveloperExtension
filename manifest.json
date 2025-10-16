@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Nathanael's Developer Tool",
+  "description": "A set of tools to help a developer be more productive.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "Nathanael's Developer Tool"
+  },
+  "permissions": ["tabs", "windows", "bookmarks", "storage"],
+  "options_page": "options.html",
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*/*/pull/*/files*"
+      ],
+      "js": ["src/content.js"],
+      "css": ["src/content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "chrome_url_overrides": {
+    "newtab": "newtab.html"
+  }
+}

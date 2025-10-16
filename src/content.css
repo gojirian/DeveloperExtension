@@ -1,0 +1,46 @@
+.gh-pr-toolbar-tabs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 1rem;
+}
+
+.gh-pr-toolbar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--fgColor-default, var(--color-fg-default, #1f2328));
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  white-space: nowrap;
+}
+
+.gh-pr-toolbar-button:hover {
+  background-color: var(--bgColor-muted, var(--color-neutral-subtle, rgba(110, 118, 129, 0.15)));
+  border-color: var(--borderColor-muted, var(--color-border-default, rgba(48, 54, 61, 0.6)));
+}
+
+.gh-pr-toolbar-button:active {
+  transform: translateY(1px);
+}
+
+.gh-pr-toolbar-button.active {
+  color: var(--fgColor-accent, var(--color-accent-fg, #0969da));
+  border-color: var(--borderColor-accent-emphasis, var(--color-accent-fg, #0969da));
+  background-color: var(--bgColor-accent-muted, var(--color-accent-subtle, rgba(56, 139, 253, 0.2)));
+}
+
+@media (max-width: 640px) {
+  .gh-pr-toolbar-tabs {
+    display: none;
+  }
+}
