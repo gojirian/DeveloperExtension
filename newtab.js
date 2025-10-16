@@ -621,8 +621,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!category || appIndex < 0 || appIndex >= category.apps.length) {
         return;
       }
-
-      openApp(category.apps[appIndex], target);
+      openApp(category.apps.filter(row=>!!row.url)[appIndex], target);
     });
   }
 
