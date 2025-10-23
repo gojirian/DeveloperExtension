@@ -103,6 +103,13 @@ function createBookmarkListItem(node) {
     link.href = node.url;
     link.textContent = node.title || node.url;
     link.title = node.url;
+
+    // Add click handler to check for existing tabs
+    link.addEventListener('click', async (event) => {
+      event.preventDefault();
+      await openBookmark({ name: node.title || node.url, url: node.url }, link);
+    });
+
     li.appendChild(link);
     return li;
   }
@@ -167,6 +174,29 @@ const normalizeUrl = (value, { allowEmpty = false } = {}) => {
 };
 
 const stripTrailingSlash = (url) => (url.endsWith('/') ? url.slice(0, -1) : url);
+
+const extractDomain = (url) => {
+  try {
+    const urlObj = new URL(url);
+    return urlObj.hostname;
+  } catch (error) {
+    return null;
+  }
+};
+
+const matchTabsByDomain = (tabs, url) => {
+  const domain = extractDomain(url);
+  if (!domain) {
+    return [];
+  }
+  return tabs.filter((tab) => {
+    if (typeof tab.url !== 'string') {
+      return false;
+    }
+    const tabDomain = extractDomain(tab.url);
+    return tabDomain === domain;
+  });
+};
 
 const getDashboardUrl = () =>
   new Promise((resolve) => {
@@ -455,7 +485,10 @@ const tabPicker = (() => {
       modal.removeAttribute('aria-hidden');
       previousFocus = trigger || document.activeElement;
       title.textContent = `Open existing ${app.name} tab?`;
-      description.textContent = `Pick one of the existing tabs for ${app.url} or open a new one.`;
+      const domain = extractDomain(app.url);
+      description.textContent = tabs.length > 1
+        ? `Found ${tabs.length} existing tabs for ${domain || app.url}. Pick one or open a new one.`
+        : `Found an existing tab for ${domain || app.url}. Switch to it or open a new one.`;
       list.innerHTML = '';
 
       tabs.forEach((tab) => {
@@ -521,6 +554,26 @@ const openApp = async (app, trigger) => {
   }
   if (result.action === 'new') {
     window.location.assign(app.url);
+    return;
+  }
+  if (result.action === 'existing' && result.tab) {
+    await focusExistingTab(result.tab);
+  }
+};
+
+const openBookmark = async (bookmark, trigger) => {
+  const tabs = await queryTabs({});
+  const matches = matchTabsByDomain(tabs, bookmark.url);
+  if (matches.length === 0) {
+    window.location.assign(bookmark.url);
+    return;
+  }
+  const result = await tabPicker.show(bookmark, matches, trigger);
+  if (!result) {
+    return;
+  }
+  if (result.action === 'new') {
+    window.location.assign(bookmark.url);
     return;
   }
   if (result.action === 'existing' && result.tab) {
