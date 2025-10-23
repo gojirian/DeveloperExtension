@@ -300,4 +300,125 @@ resetButton.addEventListener('click', () => {
   );
 });
 
+// Import/Export functionality
+const downloadButton = document.getElementById('download-settings');
+const uploadButton = document.getElementById('upload-settings');
+const fileInput = document.getElementById('file-input');
+
+const downloadSettings = () => {
+  if (!chrome?.storage?.local) {
+    setStatus('Chrome storage API not available', 2500);
+    return;
+  }
+
+  chrome.storage.local.get(
+    {
+      [STORAGE_KEY_DASHBOARD_ITEMS]: DEFAULT_DASHBOARD_ITEMS,
+      [STORAGE_KEY_APPS]: DEFAULT_APPS
+    },
+    (result) => {
+      const settings = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        dashboardItems: result[STORAGE_KEY_DASHBOARD_ITEMS] || DEFAULT_DASHBOARD_ITEMS,
+        apps: result[STORAGE_KEY_APPS] || DEFAULT_APPS
+      };
+
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `developer-extension-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      setStatus('Settings downloaded successfully');
+    }
+  );
+};
+
+const uploadSettings = (file) => {
+  if (!file) {
+    setStatus('No file selected', 1500);
+    return;
+  }
+
+  if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
+    setStatus('Please select a JSON file', 2000);
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (event) => {
+    try {
+      const settings = JSON.parse(event.target.result);
+      
+      // Validate settings format
+      if (!settings || typeof settings !== 'object') {
+        throw new Error('Invalid settings format');
+      }
+
+      const dashboardItems = Array.isArray(settings.dashboardItems) 
+        ? settings.dashboardItems.slice(0, 3).filter(item => item.name && item.url)
+        : DEFAULT_DASHBOARD_ITEMS;
+
+      let apps = settings.apps;
+      // Handle legacy format (flat array) - convert to categorized format
+      if (Array.isArray(apps) && apps.length > 0 && !apps[0].category) {
+        apps = [{
+          category: 'Apps',
+          apps: apps
+        }];
+      }
+      if (!Array.isArray(apps)) {
+        apps = DEFAULT_APPS;
+      }
+
+      if (!chrome?.storage?.local) {
+        setStatus('Chrome storage API not available', 2500);
+        return;
+      }
+
+      chrome.storage.local.set(
+        {
+          [STORAGE_KEY_DASHBOARD_ITEMS]: dashboardItems,
+          [STORAGE_KEY_APPS]: apps
+        },
+        () => {
+          renderDashboardItems(dashboardItems);
+          renderCategories(apps);
+          setStatus('Settings imported successfully');
+        }
+      );
+
+    } catch (error) {
+      console.error('Error parsing JSON file:', error);
+      setStatus('Invalid JSON file format', 2500);
+    }
+  };
+
+  reader.onerror = () => {
+    setStatus('Error reading file', 2000);
+  };
+
+  reader.readAsText(file);
+};
+
+downloadButton.addEventListener('click', downloadSettings);
+
+uploadButton.addEventListener('click', () => {
+  fileInput.click();
+});
+
+fileInput.addEventListener('change', (event) => {
+  const file = event.target.files[0];
+  if (file) {
+    uploadSettings(file);
+  }
+  // Reset file input so the same file can be selected again if needed
+  event.target.value = '';
+});
+
 loadSettings();
