@@ -7,18 +7,16 @@
     "default_title": "Nathanael's Developer Tool"
   },
   "permissions": ["tabs", "windows", "bookmarks", "storage"],
-  "options_page": "options.html",
+  "chrome_url_overrides": {
+    "newtab": "src/newtab.html"
+  },
+  "options_page": "src/options.html",
   "content_scripts": [
     {
-      "matches": [
-        "https://github.com/*/*/pull/*/files*"
-      ],
+      "matches": ["<all_urls>"],
       "js": ["src/content.js"],
       "css": ["src/content.css"],
-      "run_at": "document_idle"
+      "run_at": "document_end"
     }
-  ],
-  "chrome_url_overrides": {
-    "newtab": "newtab.html"
-  }
+  ]
 }
