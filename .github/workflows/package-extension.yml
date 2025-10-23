@@ -9,7 +9,9 @@ on:
 jobs:
   package-extension:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write  # Required to create releases and upload assets
+      
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
