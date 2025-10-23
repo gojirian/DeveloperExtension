@@ -214,6 +214,11 @@
       .add-category:hover {
         background: rgba(37, 99, 235, 0.18);
       }
+      .import-export-controls {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
       .actions {
         display: flex;
         gap: 12px;
@@ -271,6 +276,17 @@
           </header>
           <div id="categories-list" class="apps-list"></div>
           <p class="hint">Organize apps into categories. Click "Add break" to create a line break within a category.</p>
+        </section>
+        <section>
+          <header>
+            <h2>Settings Import / Export</h2>
+          </header>
+          <div class="import-export-controls">
+            <button type="button" class="add-app" id="download-settings">Download JSON</button>
+            <button type="button" class="add-app" id="upload-settings">Upload JSON</button>
+            <input type="file" id="file-input" accept=".json" style="display: none;">
+          </div>
+          <p class="hint">Download your current settings as a JSON file, or upload a previously saved configuration.</p>
         </section>
         <p class="status" id="status-message"></p>
         <div class="actions">
