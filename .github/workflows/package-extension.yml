@@ -64,7 +64,6 @@ jobs:
           cd ../..
           
       - name: Package Chrome Extension with PEM (if secret exists)
-        if: ${{ secrets.EXTENSION_PEM != '' }}
         run: |
           # Create PEM file from secret
           echo "${{ secrets.EXTENSION_PEM }}" > extension.pem
