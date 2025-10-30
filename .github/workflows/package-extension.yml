@@ -1,147 +1,83 @@
-name: Package Browser Extension
+name: Build and Package Extension
+
+permissions:
+  contents: write
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
+    branches:
+      - main
     tags:
       - 'v*'
-  workflow_dispatch:
+  release:
+    types:
+      - published
 
 jobs:
-  package-extension:
+  verify-build:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    permissions:
-      contents: write  # Required to create releases and upload assets
-      
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
-          
-      - name: Install dependencies
-        run: |
-          npm install -g web-ext
-          sudo apt-get update
-          sudo apt-get install -y zip
-          
-      - name: Get version from manifest
-        id: get_version
+          node-version: '20'
+
+      - name: Build extension
+        run: node build.js
+
+      - name: Ensure manifest version is defined
         run: |
           VERSION=$(node -p "require('./manifest.json').version")
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "Extension version: $VERSION"
-          
-      - name: Create Firefox manifest
+          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ]; then
+            echo 'manifest.json is missing a version'
+            exit 1
+          fi
+          echo "Detected version $VERSION"
+
+  package:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build extension
+        run: node build.js
+
+      - name: Determine version
+        id: manifest
         run: |
-          # Create Firefox-specific manifest (manifest v2 for better Firefox compatibility)
-          node -e "
-            const manifest = require('./manifest.json');
-            const firefoxManifest = {
-              ...manifest,
-              manifest_version: 2,
-              browser_action: {
-                default_title: manifest.action.default_title
-              },
-              permissions: [...new Set([...manifest.permissions])],
-              web_accessible_resources: []
-            };
-            delete firefoxManifest.action;
-            require('fs').writeFileSync('manifest-firefox.json', JSON.stringify(firefoxManifest, null, 2));
-          "
-          
-      - name: Package Chrome/Edge Extension
-        run: |
-          # Create Chrome/Edge package directory
-          mkdir -p dist/chrome-edge
-          cp -r manifest.json src dist/chrome-edge/
-          
-          # Create zip package for Chrome/Edge
-          cd dist/chrome-edge
-          zip -r ../chrome-edge-extension-v${{ steps.get_version.outputs.VERSION }}.zip .
-          cd ../..
-          
-      - name: Package Chrome Extension with PEM (if secret exists)
-        if: ${{ secrets.EXTENSION_PEM != '' }}
-        run: |
-          # Create PEM file from secret
-          echo "${{ secrets.EXTENSION_PEM }}" > extension.pem
-          
-          # Package Chrome extension with PEM for Chrome Web Store
-          mkdir -p dist/chrome-signed
-          cp -r manifest.json src dist/chrome-signed/
-          
-          # Create CRX package (Chrome extension format)
-          cd dist/chrome-signed
-          # Note: This creates a basic zip. For actual CRX creation, you'd need additional tools
-          zip -r ../chrome-signed-extension-v${{ steps.get_version.outputs.VERSION }}.zip .
-          cd ../..
-          
-          # Clean up PEM file
-          rm -f extension.pem
-          
-      - name: Package Firefox Extension
-        run: |
-          # Create Firefox package directory
-          mkdir -p dist/firefox
-          cp -r src dist/firefox/
-          cp manifest-firefox.json dist/firefox/manifest.json
-          
-          # Create Firefox addon package
-          cd dist/firefox
-          zip -r ../firefox-addon-v${{ steps.get_version.outputs.VERSION }}.zip .
-          cd ../..
-          
-      - name: Validate Firefox Extension
-        run: |
-          # Validate Firefox extension using web-ext
-          cd dist/firefox
-          web-ext lint --warnings-as-errors=false || echo "Firefox validation completed with warnings"
-          cd ../..
-          
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v1
+          VERSION=$(node -p "require('./manifest.json').version")
+          if [ -z "$VERSION" ] || [ "$VERSION" = "undefined" ]; then
+            echo 'manifest.json is missing a version'
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build-${{ steps.manifest.outputs.version }}
+          path: |
+            dist/chrome-edge-extension-v${{ steps.manifest.outputs.version }}.zip
+            dist/firefox-addon-v${{ steps.manifest.outputs.version }}.zip
+
+      - name: Attach artifacts to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/chrome-edge-extension-v${{ steps.get_version.outputs.VERSION }}.zip
-            dist/chrome-signed-extension-v${{ steps.get_version.outputs.VERSION }}.zip
-            dist/firefox-addon-v${{ steps.get_version.outputs.VERSION }}.zip
-          name: Release v${{ steps.get_version.outputs.VERSION }}
-          body: |
-            ## Browser Extension Release v${{ steps.get_version.outputs.VERSION }}
-            
-            ### Downloads
-            - **Chrome/Edge**: `chrome-edge-extension-v${{ steps.get_version.outputs.VERSION }}.zip`
-            - **Chrome (Signed)**: `chrome-signed-extension-v${{ steps.get_version.outputs.VERSION }}.zip` (requires EXTENSION_PEM secret)
-            - **Firefox**: `firefox-addon-v${{ steps.get_version.outputs.VERSION }}.zip`
-            
-            ### Installation Instructions
-            
-            #### Chrome/Edge
-            1. Download the Chrome/Edge zip file
-            2. Extract the contents
-            3. Open Chrome/Edge and navigate to `chrome://extensions/` or `edge://extensions/`
-            4. Enable "Developer mode"
-            5. Click "Load unpacked" and select the extracted folder
-            
-            #### Firefox
-            1. Download the Firefox addon zip file
-            2. Open Firefox and navigate to `about:addons`
-            3. Click the gear icon and select "Install Add-on From File"
-            4. Select the downloaded zip file
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
-      - name: Upload artifacts (for manual workflow runs)
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v3
-        with:
-          name: browser-extensions-v${{ steps.get_version.outputs.VERSION }}
-          path: |
-            dist/*.zip
-          retention-days: 30
+            dist/chrome-edge-extension-v${{ steps.manifest.outputs.version }}.zip
+            dist/firefox-addon-v${{ steps.manifest.outputs.version }}.zip
