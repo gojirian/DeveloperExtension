@@ -38,7 +38,11 @@ This will create packaged extensions in the `dist/` directory:
 
 ## Automated Releases
 
-The repository includes a GitHub Actions workflow that automatically packages the extension for all supported browsers and creates GitHub releases.
+The repository includes a GitHub Actions workflow that automatically packages the extension for all supported browsers and manages release assets.
+
+- **Pull requests**: Every PR runs the build script to ensure the extension packages correctly and that a manifest version is present before merging.
+- **Pushes & tags**: Builds are generated on pushes to `main` and version tags and uploaded as workflow artifacts.
+- **Releases**: Published GitHub releases automatically attach the generated Chrome/Edge and Firefox zip files so they are ready for distribution.
 
 ### Triggering Releases
 
