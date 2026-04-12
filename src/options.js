@@ -421,4 +421,178 @@ fileInput.addEventListener('change', (event) => {
   event.target.value = '';
 });
 
+// ── GitHub Integration ───────────────────────────────────────────────
+
+const githubTokenInput = document.getElementById('github-token');
+const githubUsernameInput = document.getElementById('github-username');
+const githubOrgInput = document.getElementById('github-org');
+const githubProjectsList = document.getElementById('github-projects-list');
+const githubFetchButton = document.getElementById('github-fetch-projects');
+const githubStatusEl = document.getElementById('github-status');
+
+let loadedProjects = []; // fetched from API
+let selectedProjectIds = new Set(); // user's selections
+
+const showGitHubStatus = (message, type = 'error') => {
+  githubStatusEl.textContent = message;
+  githubStatusEl.className = `github-status-msg ${type}`;
+  githubStatusEl.hidden = false;
+  if (type === 'success') {
+    setTimeout(() => { githubStatusEl.hidden = true; }, 3000);
+  }
+};
+
+const hideGitHubStatus = () => {
+  githubStatusEl.hidden = true;
+};
+
+const renderProjectCheckboxes = (projects, selected) => {
+  githubProjectsList.innerHTML = '';
+  if (!projects || projects.length === 0) {
+    githubProjectsList.innerHTML = '<p class="hint">No open projects found in this organization.</p>';
+    return;
+  }
+  projects.forEach((project) => {
+    const label = document.createElement('label');
+    label.className = 'github-project-item';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = project.id;
+    checkbox.checked = selected.has(project.id);
+    checkbox.addEventListener('change', () => {
+      if (checkbox.checked) {
+        selectedProjectIds.add(project.id);
+      } else {
+        selectedProjectIds.delete(project.id);
+      }
+    });
+    const span = document.createElement('span');
+    span.textContent = project.title;
+    label.appendChild(checkbox);
+    label.appendChild(span);
+    githubProjectsList.appendChild(label);
+  });
+};
+
+const loadGitHubSettings = () => {
+  if (!chrome?.storage?.local) return;
+  chrome.storage.local.get(
+    {
+      [STORAGE_GITHUB_TOKEN]: '',
+      [STORAGE_GITHUB_USERNAME]: '',
+      [STORAGE_GITHUB_ORG]: '',
+      [STORAGE_GITHUB_PROJECTS]: []
+    },
+    (result) => {
+      githubTokenInput.value = result[STORAGE_GITHUB_TOKEN] || '';
+      githubUsernameInput.value = result[STORAGE_GITHUB_USERNAME] || '';
+      githubOrgInput.value = result[STORAGE_GITHUB_ORG] || '';
+      const saved = result[STORAGE_GITHUB_PROJECTS] || [];
+      selectedProjectIds = new Set(saved.map((p) => p.id));
+      if (saved.length > 0) {
+        // Show previously saved projects as checkboxes
+        loadedProjects = saved;
+        renderProjectCheckboxes(saved, selectedProjectIds);
+      }
+    }
+  );
+};
+
+githubFetchButton.addEventListener('click', async () => {
+  const token = githubTokenInput.value.trim();
+  const org = githubOrgInput.value.trim();
+  if (!token) {
+    showGitHubStatus('Please enter your Personal Access Token first.');
+    return;
+  }
+  if (!org) {
+    showGitHubStatus('Please enter the organization name first.');
+    return;
+  }
+  hideGitHubStatus();
+  githubFetchButton.disabled = true;
+  githubFetchButton.textContent = 'Fetching…';
+  try {
+    const projects = await fetchOrgProjects(token, org);
+    loadedProjects = projects;
+    renderProjectCheckboxes(projects, selectedProjectIds);
+    showGitHubStatus(`Found ${projects.length} open project(s).`, 'success');
+  } catch (err) {
+    showGitHubStatus(err.message || 'Failed to fetch projects.');
+    githubProjectsList.innerHTML = '<p class="hint">Could not load projects. Check your token and org name.</p>';
+  } finally {
+    githubFetchButton.disabled = false;
+    githubFetchButton.textContent = 'Fetch Projects';
+  }
+});
+
+const collectGitHubSettings = () => {
+  const token = githubTokenInput.value.trim();
+  const username = githubUsernameInput.value.trim();
+  const org = githubOrgInput.value.trim();
+  const projects = loadedProjects
+    .filter((p) => selectedProjectIds.has(p.id))
+    .map((p) => ({ id: p.id, title: p.title }));
+  return { token, username, org, projects };
+};
+
+// Patch the form submit to also save GitHub settings
+const originalSubmitHandler = form.onsubmit;
+form.addEventListener('submit', (event) => {
+  // The existing submit handler already calls event.preventDefault()
+  // We just need to also save GitHub settings
+  const gh = collectGitHubSettings();
+  if (chrome?.storage?.local) {
+    chrome.storage.local.set({
+      [STORAGE_GITHUB_TOKEN]: gh.token,
+      [STORAGE_GITHUB_USERNAME]: gh.username,
+      [STORAGE_GITHUB_ORG]: gh.org,
+      [STORAGE_GITHUB_PROJECTS]: gh.projects
+    });
+  }
+});
+
+// Patch download to exclude token
+const originalDownloadSettings = downloadSettings;
+const patchedDownloadSettings = () => {
+  if (!chrome?.storage?.local) {
+    setStatus('Chrome storage API not available', 2500);
+    return;
+  }
+  chrome.storage.local.get(
+    {
+      [STORAGE_KEY_DASHBOARD_ITEMS]: DEFAULT_DASHBOARD_ITEMS,
+      [STORAGE_KEY_APPS]: DEFAULT_APPS,
+      [STORAGE_GITHUB_USERNAME]: '',
+      [STORAGE_GITHUB_ORG]: '',
+      [STORAGE_GITHUB_PROJECTS]: []
+    },
+    (result) => {
+      const settings = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        dashboardItems: result[STORAGE_KEY_DASHBOARD_ITEMS] || DEFAULT_DASHBOARD_ITEMS,
+        apps: result[STORAGE_KEY_APPS] || DEFAULT_APPS,
+        githubUsername: result[STORAGE_GITHUB_USERNAME] || '',
+        githubOrg: result[STORAGE_GITHUB_ORG] || '',
+        githubSelectedProjects: result[STORAGE_GITHUB_PROJECTS] || []
+        // Token intentionally excluded for security
+      };
+      const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `developer-extension-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setStatus('Settings downloaded successfully');
+    }
+  );
+};
+downloadButton.removeEventListener('click', downloadSettings);
+downloadButton.addEventListener('click', patchedDownloadSettings);
+
 loadSettings();
+loadGitHubSettings();

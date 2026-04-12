@@ -22,10 +22,23 @@ const firefoxManifest = {
   browser_action: {
     default_title: manifest.action.default_title
   },
-  permissions: [...new Set([...manifest.permissions])], // Remove duplicates
+  permissions: [
+    ...new Set([
+      ...manifest.permissions,
+      ...(manifest.host_permissions || [])
+    ])
+  ],
   web_accessible_resources: []
 };
 delete firefoxManifest.action;
+delete firefoxManifest.host_permissions;
+
+// Convert service_worker to background scripts for Firefox (Manifest v2)
+if (manifest.background && manifest.background.service_worker) {
+  firefoxManifest.background = {
+    scripts: ['src/github-tasks.js', manifest.background.service_worker]
+  };
+}
 
 // Clean previous builds
 if (fs.existsSync('dist')) {
@@ -35,7 +48,7 @@ if (fs.existsSync('dist')) {
 // Build Chrome/Edge version
 console.log('Building Chrome/Edge version...');
 fs.mkdirSync('dist/chrome-edge', { recursive: true });
-execSync('cp -r manifest.json src dist/chrome-edge/');
+execSync('cp -r manifest.json background.js src dist/chrome-edge/');
 process.chdir('dist/chrome-edge');
 execSync(`zip -r ../chrome-edge-extension-v${version}.zip .`);
 process.chdir('../..');
@@ -44,7 +57,7 @@ process.chdir('../..');
 console.log('Building Firefox version...');
 fs.mkdirSync('dist/firefox', { recursive: true });
 fs.writeFileSync('dist/firefox/manifest.json', JSON.stringify(firefoxManifest, null, 2));
-execSync('cp -r src dist/firefox/');
+execSync('cp -r background.js src dist/firefox/');
 process.chdir('dist/firefox');
 execSync(`zip -r ../firefox-addon-v${version}.zip .`);
 process.chdir('../..');

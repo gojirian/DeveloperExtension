@@ -627,6 +627,186 @@ const openOptionsPage = () => {
   }
 };
 
+// ── GitHub Tasks ─────────────────────────────────────────────────────
+
+function renderTasksList(container, tasks, unreadByIssueUrl) {
+  container.innerHTML = '';
+  if (!tasks || tasks.length === 0) {
+    container.innerHTML = '<p class="muted">No tasks assigned to you in selected projects.</p>';
+    return;
+  }
+  tasks.forEach((task) => {
+    const card = document.createElement('a');
+    card.className = 'github-task-card';
+    card.href = task.issueUrl;
+    card.target = '_blank';
+    card.rel = 'noopener';
+
+    const apiUrl = htmlUrlToApiUrl(task.issueUrl);
+    const unread = unreadByIssueUrl[apiUrl] || 0;
+
+    const slug = statusSlug(task.status);
+
+    card.innerHTML = `
+      <span class="github-task-title">${escapeHtml(task.title)}</span>
+      <span class="github-task-repo">${escapeHtml(task.repoFullName)}#${task.issueNumber}</span>
+      <div class="github-task-badges">
+        ${task.status ? `<span class="github-task-status" data-status="${slug}">${escapeHtml(task.status)}</span>` : ''}
+        <span class="github-task-comments" title="${task.commentCount} comments">&#x1F4AC; ${task.commentCount}</span>
+        <span class="github-task-unread" title="${unread} unread">${unread > 0 ? `&#x1F514; ${unread}` : ''}</span>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function friendlyReason(reason) {
+  const map = {
+    assign: 'assigned',
+    author: 'author',
+    comment: 'comment',
+    mention: 'mention',
+    review_requested: 'review',
+    state_change: 'status',
+    subscribed: 'subscribed',
+    team_mention: 'team',
+    ci_activity: 'CI'
+  };
+  return map[reason] || reason;
+}
+
+function renderNotifList(container, threads) {
+  container.innerHTML = '';
+  if (!threads || threads.length === 0) {
+    container.innerHTML = '<p class="muted">No notifications.</p>';
+    return;
+  }
+  threads.forEach((thread) => {
+    const card = document.createElement('a');
+    card.className = 'notif-card' + (thread.unread ? ' unread' : '');
+    card.href = thread.htmlUrl;
+    card.target = '_blank';
+    card.rel = 'noopener';
+
+    const author = thread.commentAuthor ? escapeHtml(thread.commentAuthor) : '';
+    const body = thread.commentBody ? escapeHtml(thread.commentBody) : '';
+    const time = thread.commentedAt || thread.updatedAt;
+    const timeStr = time ? formatRelativeTime(new Date(time).getTime()) : '';
+
+    card.innerHTML = `
+      <span class="notif-subject">${escapeHtml(thread.subjectTitle)}</span>
+      <div class="notif-meta">
+        ${author ? `<span class="notif-author">@${author}</span>` : ''}
+        <span class="notif-reason">${friendlyReason(thread.reason)}</span>
+        ${timeStr ? `<span>${timeStr}</span>` : ''}
+      </div>
+      ${body ? `<p class="notif-body">${body}</p>` : ''}
+      <span class="notif-repo">${escapeHtml(thread.repoFullName)}</span>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function updateNotifPanel(notifications) {
+  const section = document.getElementById('github-notif-section');
+  const listEl = document.getElementById('notif-list');
+  const countEl = document.getElementById('notif-count');
+  const updatedEl = document.getElementById('notif-updated');
+  if (!section || !listEl) return;
+
+  section.hidden = false;
+  const threads = notifications.threads || [];
+  renderNotifList(listEl, threads);
+  const unread = notifications.totalUnread || 0;
+  countEl.textContent = unread > 0 ? `${unread} unread` : `${threads.length} total`;
+  updatedEl.textContent = notifications.lastFetched ? formatRelativeTime(notifications.lastFetched) : '';
+}
+
+async function initGitHubTasks() {
+  const section = document.getElementById('github-tasks-section');
+  const listEl = document.getElementById('github-tasks-list');
+  const errorEl = document.getElementById('github-tasks-error');
+  const unconfiguredEl = document.getElementById('github-tasks-unconfigured');
+  const countEl = document.getElementById('github-tasks-count');
+  const updatedEl = document.getElementById('github-tasks-updated');
+  const refreshBtn = document.getElementById('github-tasks-refresh');
+  const openOptionsBtn = document.getElementById('github-open-options');
+
+  if (!section) return;
+
+  const configured = await isGitHubConfigured();
+  if (!configured) {
+    section.hidden = false;
+    unconfiguredEl.hidden = false;
+    listEl.hidden = true;
+    if (openOptionsBtn) {
+      openOptionsBtn.addEventListener('click', openOptionsPage);
+    }
+    return;
+  }
+
+  section.hidden = false;
+  unconfiguredEl.hidden = true;
+
+  // Show cached data immediately
+  const cachedTasks = await getCachedTasks();
+  const cachedNotifs = await getCachedNotifications();
+  if (cachedTasks && cachedTasks.tasks) {
+    renderTasksList(listEl, cachedTasks.tasks, cachedNotifs?.unreadByIssueUrl || {});
+    countEl.textContent = `${cachedTasks.tasks.length} task${cachedTasks.tasks.length !== 1 ? 's' : ''}`;
+    updatedEl.textContent = formatRelativeTime(cachedTasks.lastFetched);
+  }
+  if (cachedNotifs) {
+    updateNotifPanel(cachedNotifs);
+  }
+
+  // Skip fetch if both caches are fresh and have data
+  const notifCacheValid = cachedNotifs && cachedNotifs.threads && cachedNotifs.threads.length > 0;
+  if (isCacheFresh(cachedTasks) && notifCacheValid) return;
+
+  // Fetch fresh data
+  try {
+    const { tasks, notifications } = await refreshAndCacheTasks();
+    renderTasksList(listEl, tasks, notifications.unreadByIssueUrl || {});
+    countEl.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+    updatedEl.textContent = 'just now';
+    errorEl.hidden = true;
+    updateNotifPanel(notifications);
+  } catch (err) {
+    if (!cachedTasks) {
+      errorEl.hidden = false;
+      errorEl.textContent = err.message || 'Failed to load GitHub tasks.';
+      listEl.innerHTML = '';
+    }
+  }
+
+  // Manual refresh
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      try {
+        const { tasks, notifications } = await refreshAndCacheTasks();
+        renderTasksList(listEl, tasks, notifications.unreadByIssueUrl || {});
+        countEl.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+        updatedEl.textContent = 'just now';
+        errorEl.hidden = true;
+        updateNotifPanel(notifications);
+      } catch (err) {
+        errorEl.hidden = false;
+        errorEl.textContent = err.message || 'Failed to refresh.';
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Close any other existing newtab pages
   if (chrome?.tabs) {
@@ -649,6 +829,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDashboardItems(dashboardItems);
   renderApps(apps);
   void renderBookmarksNav();
+  void initGitHubTasks();
 
   const searchForm = document.getElementById('search-form');
   if (searchForm) {
