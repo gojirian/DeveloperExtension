@@ -1,34 +1,9 @@
 const STORAGE_KEY_DASHBOARD = 'dashboardUrl';
 const STORAGE_KEY_DASHBOARD_ITEMS = 'dashboardItems';
 const STORAGE_KEY_APPS = 'apps';
-const DEFAULT_DASHBOARD_URL = 'http://localhost:3030/';
-const DEFAULT_DASHBOARD_ITEMS = [
-  { name: 'Dashboard', url: 'http://localhost:3030/' },
-  { name: 'Jira', url: 'https://internal.solutions.exaba.com' }
-];
-const DEFAULT_APPS = [
-  {
-    category: 'Core',
-    apps: []
-  },
-  {
-    category: 'FH Development',
-    apps: [
-      { name: 'Local Clinical', url: 'http://clinical.localhost/' },
-      { name: 'Local Client', url: 'http://client.localhost/' },
-      { break: true },
-      { name: 'PostHog', url: 'http://localhost:8000/' },
-      { name: 'PostgreSQL', url: 'http://localhost:5432/' }
-    ]
-  },
-  {
-    category: 'Every Day',
-    apps: [
-      { name: 'Staging Clinical', url: 'http://staging-clinical.fordhealth.com.au/' },
-      { name: 'Staging Client', url: 'http://staging-client.fordhealth.com.au/' }
-    ]
-  }
-];
+const DEFAULT_DASHBOARD_URL = '';
+const DEFAULT_DASHBOARD_ITEMS = [];
+const DEFAULT_APPS = [{ category: 'Apps', apps: [] }];
 
 const normalizeUrl = (value) => {
   if (!value) {

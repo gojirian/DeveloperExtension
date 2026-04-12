@@ -1,37 +1,9 @@
 const STORAGE_KEY_DASHBOARD = 'dashboardUrl';
 const STORAGE_KEY_APPS = 'apps';
 const STORAGE_KEY_DASHBOARD_ITEMS = 'dashboardItems';
-const DEFAULT_TARGET_URL = 'http://localhost:3030/';
-const DEFAULT_DASHBOARD_ITEMS = [
-  { name: 'Dashboard', url: 'http://localhost:3030/' },
-  { name: 'Jira', url: 'https://internal.solutions.exaba.com' }
-];
-const DEFAULT_APPS = [
-  {
-    category: 'Core',
-    apps: [
-      { name: 'GitHub', url: 'https://github.com' },
-    ]
-  },
-  {
-    category: 'Development',
-    apps: [
-      { name: 'Local App', url: 'http://app.localhost/' },
-      { name: 'Local Api', url: 'http://api.localhost/' },
-      { break: true },
-      { name: 'Mailpit', url: 'http://localhost:8025/' },
-    ]
-  },
-  {
-    category: 'Every Day',
-    apps: [
-      { name: 'Google', url: 'https://www.google.com/' },
-      { name: 'Gmail', url: 'https://mail.google.com/' },
-      
-    ]
-  }
-  
-];
+const DEFAULT_TARGET_URL = '';
+const DEFAULT_DASHBOARD_ITEMS = [];
+const DEFAULT_APPS = [{ category: 'Apps', apps: [] }];
 const SEARCH_ENGINE = 'https://www.google.com/search?q=';
 const BOOKMARKS_BAR_ID_CANDIDATES = new Set(['1', 'toolbar_____']);
 
@@ -728,7 +700,7 @@ function updateNotifPanel(notifications) {
   updatedEl.textContent = notifications.lastFetched ? formatRelativeTime(notifications.lastFetched) : '';
 }
 
-async function initGitHubTasks() {
+async function initGitHubTasks({ showNotifications = true } = {}) {
   const section = document.getElementById('github-tasks-section');
   const listEl = document.getElementById('github-tasks-list');
   const errorEl = document.getElementById('github-tasks-error');
@@ -762,12 +734,12 @@ async function initGitHubTasks() {
     countEl.textContent = `${cachedTasks.tasks.length} task${cachedTasks.tasks.length !== 1 ? 's' : ''}`;
     updatedEl.textContent = formatRelativeTime(cachedTasks.lastFetched);
   }
-  if (cachedNotifs) {
+  if (showNotifications && cachedNotifs) {
     updateNotifPanel(cachedNotifs);
   }
 
   // Skip fetch if both caches are fresh and have data
-  const notifCacheValid = cachedNotifs && cachedNotifs.threads && cachedNotifs.threads.length > 0;
+  const notifCacheValid = !showNotifications || (cachedNotifs && cachedNotifs.threads && cachedNotifs.threads.length > 0);
   if (isCacheFresh(cachedTasks) && notifCacheValid) return;
 
   // Fetch fresh data
@@ -777,7 +749,7 @@ async function initGitHubTasks() {
     countEl.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
     updatedEl.textContent = 'just now';
     errorEl.hidden = true;
-    updateNotifPanel(notifications);
+    if (showNotifications) updateNotifPanel(notifications);
   } catch (err) {
     if (!cachedTasks) {
       errorEl.hidden = false;
@@ -796,7 +768,7 @@ async function initGitHubTasks() {
         countEl.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
         updatedEl.textContent = 'just now';
         errorEl.hidden = true;
-        updateNotifPanel(notifications);
+        if (showNotifications) updateNotifPanel(notifications);
       } catch (err) {
         errorEl.hidden = false;
         errorEl.textContent = err.message || 'Failed to refresh.';
@@ -1166,8 +1138,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderDashboardItems(dashboardItems);
   renderApps(apps);
   void renderBookmarksNav();
-  void initGitHubTasks();
   void initCadenceTasks();
+
+  // Gate GitHub panels on Cadence feature flags
+  const cadenceReady = await isCadenceConfigured();
+  if (cadenceReady) {
+    const features = await getFeatures();
+    const showTasks = hasFeature(features, 'git-project-list');
+    const showNotifs = hasFeature(features, 'git-notifications-list');
+    if (showTasks || showNotifs) {
+      void initGitHubTasks({ showNotifications: showNotifs });
+    }
+    if (!showTasks) {
+      // Hide the tasks panel entirely if flag is absent
+      const tasksSection = document.getElementById('github-tasks-section');
+      if (tasksSection) tasksSection.hidden = true;
+    }
+  }
 
   const searchForm = document.getElementById('search-form');
   if (searchForm) {

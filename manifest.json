@@ -1,10 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "Nathanael's Developer Tool",
-  "description": "A set of tools to help a developer be more productive.",
-  "version": "0.2.0",
+  "name": "Cadence Tab",
+  "description": "Your developer dashboard — Cadence time tracking, GitHub tasks, bookmarks, and quick links in every new tab.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "action": {
-    "default_title": "Nathanael's Developer Tool"
+    "default_title": "Cadence Tab",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms"],
   "host_permissions": ["https://api.github.com/*", "https://withcadence.online/*"],
@@ -17,7 +29,7 @@
   "options_page": "src/options.html",
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://github.com/*"],
       "js": ["src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_end"

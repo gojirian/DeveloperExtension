@@ -4,6 +4,9 @@ const CADENCE_BASE_URL = 'https://withcadence.online/api/v1/external';
 
 const STORAGE_CADENCE_TOKEN = 'cadenceToken';
 const STORAGE_CADENCE_TASKS_CACHE = 'cadenceTasksCache';
+const STORAGE_CADENCE_FEATURES = 'cadenceFeatures';
+
+const FEATURES_FRESH_MS = 5 * 60 * 1000; // 5 minutes
 
 const CADENCE_CACHE_FRESH_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -137,6 +140,48 @@ async function refreshAndCacheCadenceTasks() {
   await storageSet({ [STORAGE_CADENCE_TASKS_CACHE]: cache });
 
   return { tasks, activeTimer };
+}
+
+// ── Feature Flags (/me) ─────────────────────────────────────────────
+
+async function fetchCadenceMe(token) {
+  const result = await cadenceFetch('/me', token);
+  return result.data || {};
+}
+
+async function getCachedFeatures() {
+  const result = await storageGet({ [STORAGE_CADENCE_FEATURES]: null });
+  return result[STORAGE_CADENCE_FEATURES];
+}
+
+function isFeaturesCacheFresh(cache) {
+  if (!cache || !cache.lastFetched) return false;
+  return Date.now() - cache.lastFetched < FEATURES_FRESH_MS;
+}
+
+async function refreshAndCacheFeatures() {
+  const cfg = await getCadenceConfig();
+  if (!cfg.token) return { features: [], lastFetched: 0 };
+  const me = await fetchCadenceMe(cfg.token);
+  const data = { features: me.features || [], lastFetched: Date.now() };
+  await storageSet({ [STORAGE_CADENCE_FEATURES]: data });
+  return data;
+}
+
+async function getFeatures() {
+  let cached = await getCachedFeatures();
+  if (isFeaturesCacheFresh(cached)) return cached;
+  try {
+    cached = await refreshAndCacheFeatures();
+  } catch (e) {
+    // Fall back to stale cache if available
+  }
+  return cached || { features: [], lastFetched: 0 };
+}
+
+function hasFeature(featureData, flag) {
+  if (!featureData || !Array.isArray(featureData.features)) return false;
+  return featureData.features.includes(flag);
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

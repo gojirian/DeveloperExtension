@@ -19,6 +19,20 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 async function refreshAndUpdateBadge() {
+  // Check feature flags before refreshing GitHub data
+  const cadenceReady = await isCadenceConfigured();
+  if (cadenceReady) {
+    const features = await getFeatures();
+    if (!hasFeature(features, 'git-project-list') && !hasFeature(features, 'git-notifications-list')) {
+      chrome.action.setBadgeText({ text: '' });
+      return;
+    }
+  } else {
+    // Cadence not configured — skip GitHub refresh
+    chrome.action.setBadgeText({ text: '' });
+    return;
+  }
+
   const configured = await isGitHubConfigured();
   if (!configured) {
     chrome.action.setBadgeText({ text: '' });
@@ -28,7 +42,7 @@ async function refreshAndUpdateBadge() {
     const { notifications } = await refreshAndCacheTasks();
     const count = notifications.totalUnread || 0;
     chrome.action.setBadgeText({ text: count > 0 ? String(count) : '' });
-    chrome.action.setBadgeBackgroundColor({ color: '#2563eb' });
+    chrome.action.setBadgeBackgroundColor({ color: '#6366f1' });
   } catch (err) {
     console.warn('Background GitHub refresh failed:', err.message);
   }

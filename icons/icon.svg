@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#22d3ee"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="128" height="128" rx="28" fill="#0f172a"/>
+  <!-- Outer arc of the C -->
+  <path d="M88 38a38 38 0 1 0 0 52" fill="none" stroke="url(#g)" stroke-width="12" stroke-linecap="round"/>
+  <!-- Small tab/dash accent at top-right -->
+  <rect x="78" y="28" width="22" height="8" rx="4" fill="url(#g)"/>
+</svg>
