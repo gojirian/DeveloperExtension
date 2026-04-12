@@ -337,6 +337,18 @@
         </section>
         <section>
           <header>
+            <h2>Cadence Integration</h2>
+          </header>
+          <label>
+            Bearer Token
+            <input type="password" id="cadence-token" placeholder="trkr_xxxx_xxxx" spellcheck="false" autocomplete="off" />
+          </label>
+          <p class="hint">Your Cadence API key. Go to your Cadence Profile and generate an External API Token.</p>
+          <button type="button" class="add-app" id="cadence-test-connection">Test Connection</button>
+          <p id="cadence-status" class="github-status-msg" hidden></p>
+        </section>
+        <section>
+          <header>
             <h2>Daily Apps</h2>
             <button type="button" class="add-category" id="add-category">Add category</button>
           </header>
@@ -393,6 +405,7 @@
       </div>
     </template>
     <script src="github-tasks.js"></script>
+    <script src="cadence-tasks.js"></script>
     <script src="options.js"></script>
   </body>
 </html>

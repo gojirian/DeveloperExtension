@@ -1,16 +1,20 @@
 /* Background service worker — periodic GitHub refresh + badge */
 
 if (typeof importScripts === 'function') {
-  importScripts('src/github-tasks.js');
+  importScripts('src/github-tasks.js', 'src/cadence-tasks.js');
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.alarms.create('refreshGitHubTasks', { periodInMinutes: 5 });
+  chrome.alarms.create('refreshCadenceTasks', { periodInMinutes: 5 });
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === 'refreshGitHubTasks') {
     await refreshAndUpdateBadge();
+  }
+  if (alarm.name === 'refreshCadenceTasks') {
+    await refreshCadenceInBackground();
   }
 });
 
@@ -30,5 +34,16 @@ async function refreshAndUpdateBadge() {
   }
 }
 
+async function refreshCadenceInBackground() {
+  const configured = await isCadenceConfigured();
+  if (!configured) return;
+  try {
+    await refreshAndCacheCadenceTasks();
+  } catch (err) {
+    console.warn('Background Cadence refresh failed:', err.message);
+  }
+}
+
 // Refresh on service worker startup (browser launch)
 refreshAndUpdateBadge();
+refreshCadenceInBackground();

@@ -36,7 +36,7 @@ delete firefoxManifest.host_permissions;
 // Convert service_worker to background scripts for Firefox (Manifest v2)
 if (manifest.background && manifest.background.service_worker) {
   firefoxManifest.background = {
-    scripts: ['src/github-tasks.js', manifest.background.service_worker]
+    scripts: ['src/github-tasks.js', 'src/cadence-tasks.js', manifest.background.service_worker]
   };
 }
 

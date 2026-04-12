@@ -807,6 +807,343 @@ async function initGitHubTasks() {
   }
 }
 
+// ── Cadence Tasks ────────────────────────────────────────────────────
+
+function formatElapsedTime(startDate) {
+  const diff = Date.now() - new Date(startDate).getTime();
+  const mins = Math.floor(diff / 60000);
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  if (hours > 0) return `${hours}h ${remainingMins}m`;
+  return `${mins}m`;
+}
+
+function getTimerElapsedSeconds(timer) {
+  if (!timer || !timer.started_at) return 0;
+  return Math.floor((Date.now() - new Date(timer.started_at).getTime()) / 1000);
+}
+
+function renderCadenceActiveTimer(container, timer) {
+  if (!timer) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+  const key = timer.jira_key || '';
+  const title = timer.title || key;
+  const elapsed = timer.started_at ? formatElapsedTime(timer.started_at) : '';
+
+  container.innerHTML = `
+    <span class="cadence-timer-label">&#x23F1; Timer Active</span>
+    <span class="cadence-timer-task">${escapeHtml(title)}${key && key !== title ? ' (' + escapeHtml(key) + ')' : ''}</span>
+    <div class="cadence-timer-row">
+      <span class="cadence-timer-elapsed">${elapsed} elapsed</span>
+      <div class="cadence-timer-actions">
+        <button class="cadence-timer-discard" type="button" id="cadence-discard-timer" title="Discard timer">Discard</button>
+        <button class="cadence-timer-stop" type="button" id="cadence-stop-timer">Stop</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCadenceTasksList(container, tasks, activeTimer) {
+  container.innerHTML = '';
+  if (!tasks || tasks.length === 0) {
+    container.innerHTML = '<p class="muted">No tasks assigned to you.</p>';
+    return;
+  }
+  tasks.forEach((task) => {
+    const card = document.createElement('div');
+    card.className = 'cadence-task-card';
+
+    const isTimerActive = activeTimer && activeTimer.jira_key === task.jira_key;
+    if (isTimerActive) card.classList.add('timer-active');
+
+    const slug = cadenceStatusSlug(task.status?.name);
+    const statusName = task.status?.name || '';
+    const key = task.jira_key || '';
+    const projectKey = task.project_key || '';
+
+    card.innerHTML = `
+      <span class="cadence-task-title">${escapeHtml(task.title)}</span>
+      <span class="cadence-task-key">${escapeHtml(key)}${projectKey ? ' &middot; ' + escapeHtml(projectKey) : ''}</span>
+      <div class="cadence-task-badges">
+        ${statusName ? `<span class="cadence-task-status" data-status="${slug}">${escapeHtml(statusName)}</span>` : ''}
+        ${typeof task.ticket_percentage === 'number' ? `<span class="cadence-task-progress">${task.ticket_percentage}%</span>` : ''}
+        ${task.estimate_on_track !== undefined ? `<span class="cadence-task-track" data-track="${task.estimate_on_track ? 'on' : 'off'}">${task.estimate_on_track ? 'On track' : 'Off track'}</span>` : ''}
+        <button class="cadence-timer-btn${isTimerActive ? ' active' : ''}" type="button" data-jira-key="${escapeHtml(key)}" title="${isTimerActive ? 'Timer running' : 'Start timer'}">
+          ${isTimerActive ? '&#x23F9;' : '&#x25B6;'}
+        </button>
+      </div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// ── Worklog Modal ────────────────────────────────────────────────────
+
+const worklogModal = (() => {
+  const modal = document.getElementById('worklog-modal');
+  const titleEl = document.getElementById('worklog-modal-title');
+  const descEl = document.getElementById('worklog-modal-description');
+  const commentInput = document.getElementById('worklog-comment');
+  const errorEl = document.getElementById('worklog-error');
+  const submitBtn = document.getElementById('worklog-submit');
+  const stopOnlyBtn = document.getElementById('worklog-stop-only');
+  const discardBtn = document.getElementById('worklog-discard');
+  const cancelBtn = document.getElementById('worklog-cancel');
+  const backdrop = modal?.querySelector('.modal-backdrop');
+
+  let resolveFn = null;
+
+  const close = (result) => {
+    if (!modal) return;
+    modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    if (commentInput) commentInput.value = '';
+    if (errorEl) errorEl.textContent = '';
+    const resolver = resolveFn;
+    resolveFn = null;
+    if (resolver) resolver(result);
+  };
+
+  const onKeyDown = (event) => {
+    if (event.key === 'Escape' && modal?.classList.contains('active')) {
+      event.preventDefault();
+      close(null);
+    }
+  };
+
+  document.addEventListener('keydown', onKeyDown);
+
+  if (cancelBtn) cancelBtn.addEventListener('click', () => close(null));
+  if (backdrop) backdrop.addEventListener('click', () => close(null));
+
+  if (stopOnlyBtn) {
+    stopOnlyBtn.addEventListener('click', () => close({ action: 'stop' }));
+  }
+
+  if (discardBtn) {
+    discardBtn.addEventListener('click', () => close({ action: 'discard' }));
+  }
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', () => {
+      const comment = commentInput?.value.trim() || '';
+      if (comment.length < 5) {
+        if (errorEl) errorEl.textContent = 'Comment must be at least 5 characters to log to Jira.';
+        return;
+      }
+      close({ action: 'log', comment });
+    });
+  }
+
+  // Clear error on input
+  if (commentInput) {
+    commentInput.addEventListener('input', () => {
+      if (errorEl) errorEl.textContent = '';
+    });
+  }
+
+  return {
+    show(timer) {
+      if (!modal) return Promise.resolve(null);
+      const key = timer?.jira_key || '';
+      const title = timer?.title || key;
+      const elapsed = timer?.started_at ? formatElapsedTime(timer.started_at) : '';
+      const seconds = getTimerElapsedSeconds(timer);
+
+      if (titleEl) titleEl.textContent = `Stop Timer — ${key || title}`;
+      if (descEl) descEl.textContent = elapsed
+        ? `Timer running for ${elapsed}. Add a comment to log this time to Jira.`
+        : 'Add a comment to log this time to Jira, or stop without logging.';
+
+      // Disable "Stop & Log" if under 60s
+      if (submitBtn) {
+        if (seconds < 60) {
+          submitBtn.disabled = true;
+          submitBtn.title = 'Timer must run for at least 1 minute to log to Jira';
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.title = '';
+        }
+      }
+
+      modal.classList.add('active');
+      modal.removeAttribute('aria-hidden');
+      if (commentInput) commentInput.focus();
+
+      return new Promise((resolve) => {
+        resolveFn = resolve;
+      });
+    }
+  };
+})();
+
+// ── Timer Actions ────────────────────────────────────────────────────
+
+async function handleCadenceTimerStart(jiraKey, refreshUI) {
+  const cfg = await getCadenceConfig();
+  if (!cfg.token) return;
+
+  try {
+    try {
+      await startCadenceTimer(cfg.token, jiraKey);
+    } catch (err) {
+      if (err.code === 'CONFLICT') {
+        // Auto-stop current timer without logging, then start the new one
+        await stopCadenceTimer(cfg.token);
+        await startCadenceTimer(cfg.token, jiraKey);
+      } else {
+        throw err;
+      }
+    }
+    const result = await refreshAndCacheCadenceTasks();
+    refreshUI(result);
+  } catch (err) {
+    console.warn('Timer start failed:', err.message);
+  }
+}
+
+async function handleCadenceTimerStop(refreshUI) {
+  // Get current timer info for the modal
+  const cached = await getCachedCadenceTasks();
+  const timer = cached?.activeTimer;
+  if (!timer) return;
+
+  const choice = await worklogModal.show(timer);
+  if (!choice) return; // cancelled
+
+  const cfg = await getCadenceConfig();
+  if (!cfg.token) return;
+
+  try {
+    if (choice.action === 'discard') {
+      await forgetCadenceTimer(cfg.token);
+    } else if (choice.action === 'log') {
+      await stopCadenceTimer(cfg.token, choice.comment);
+    } else {
+      // 'stop' without logging
+      await stopCadenceTimer(cfg.token);
+    }
+    const result = await refreshAndCacheCadenceTasks();
+    refreshUI(result);
+  } catch (err) {
+    console.warn('Timer stop failed:', err.message);
+  }
+}
+
+async function handleCadenceTimerDiscard(refreshUI) {
+  const cfg = await getCadenceConfig();
+  if (!cfg.token) return;
+
+  try {
+    await forgetCadenceTimer(cfg.token);
+    const result = await refreshAndCacheCadenceTasks();
+    refreshUI(result);
+  } catch (err) {
+    console.warn('Timer discard failed:', err.message);
+  }
+}
+
+async function initCadenceTasks() {
+  const section = document.getElementById('cadence-tasks-section');
+  const listEl = document.getElementById('cadence-tasks-list');
+  const errorEl = document.getElementById('cadence-tasks-error');
+  const unconfiguredEl = document.getElementById('cadence-tasks-unconfigured');
+  const countEl = document.getElementById('cadence-tasks-count');
+  const updatedEl = document.getElementById('cadence-tasks-updated');
+  const refreshBtn = document.getElementById('cadence-tasks-refresh');
+  const openOptionsBtn = document.getElementById('cadence-open-options');
+  const timerEl = document.getElementById('cadence-active-timer');
+
+  if (!section) return;
+
+  const configured = await isCadenceConfigured();
+  if (!configured) {
+    section.hidden = false;
+    unconfiguredEl.hidden = false;
+    listEl.hidden = true;
+    if (openOptionsBtn) {
+      openOptionsBtn.addEventListener('click', openOptionsPage);
+    }
+    return;
+  }
+
+  section.hidden = false;
+  unconfiguredEl.hidden = true;
+
+  const refreshUI = (result) => {
+    renderCadenceTasksList(listEl, result.tasks, result.activeTimer);
+    renderCadenceActiveTimer(timerEl, result.activeTimer);
+    countEl.textContent = `${result.tasks.length} task${result.tasks.length !== 1 ? 's' : ''}`;
+    updatedEl.textContent = 'just now';
+    errorEl.hidden = true;
+  };
+
+  // Wire up timer click handlers (delegated)
+  listEl.addEventListener('click', (event) => {
+    const btn = event.target.closest('.cadence-timer-btn');
+    if (!btn) return;
+    const jiraKey = btn.dataset.jiraKey;
+    const isStop = btn.classList.contains('active');
+    if (isStop) {
+      handleCadenceTimerStop(refreshUI);
+    } else {
+      handleCadenceTimerStart(jiraKey, refreshUI);
+    }
+  });
+
+  timerEl.addEventListener('click', (event) => {
+    if (event.target.id === 'cadence-stop-timer') {
+      handleCadenceTimerStop(refreshUI);
+    }
+    if (event.target.id === 'cadence-discard-timer') {
+      handleCadenceTimerDiscard(refreshUI);
+    }
+  });
+
+  // Show cached data immediately
+  const cached = await getCachedCadenceTasks();
+  if (cached && cached.tasks) {
+    renderCadenceTasksList(listEl, cached.tasks, cached.activeTimer);
+    renderCadenceActiveTimer(timerEl, cached.activeTimer);
+    countEl.textContent = `${cached.tasks.length} task${cached.tasks.length !== 1 ? 's' : ''}`;
+    updatedEl.textContent = formatRelativeTime(cached.lastFetched);
+  }
+
+  // Skip fetch if cache is fresh
+  if (isCadenceCacheFresh(cached)) return;
+
+  // Fetch fresh data
+  try {
+    const result = await refreshAndCacheCadenceTasks();
+    refreshUI(result);
+  } catch (err) {
+    if (!cached) {
+      errorEl.hidden = false;
+      errorEl.textContent = err.message || 'Failed to load tasks.';
+      listEl.innerHTML = '';
+    }
+  }
+
+  // Manual refresh
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      try {
+        const result = await refreshAndCacheCadenceTasks();
+        refreshUI(result);
+      } catch (err) {
+        errorEl.hidden = false;
+        errorEl.textContent = err.message || 'Failed to refresh.';
+      } finally {
+        refreshBtn.disabled = false;
+      }
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   // Close any other existing newtab pages
   if (chrome?.tabs) {
@@ -830,6 +1167,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderApps(apps);
   void renderBookmarksNav();
   void initGitHubTasks();
+  void initCadenceTasks();
 
   const searchForm = document.getElementById('search-form');
   if (searchForm) {

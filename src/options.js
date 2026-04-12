@@ -576,7 +576,7 @@ const patchedDownloadSettings = () => {
         githubUsername: result[STORAGE_GITHUB_USERNAME] || '',
         githubOrg: result[STORAGE_GITHUB_ORG] || '',
         githubSelectedProjects: result[STORAGE_GITHUB_PROJECTS] || []
-        // Token intentionally excluded for security
+        // Tokens intentionally excluded for security
       };
       const blob = new Blob([JSON.stringify(settings, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -594,5 +594,76 @@ const patchedDownloadSettings = () => {
 downloadButton.removeEventListener('click', downloadSettings);
 downloadButton.addEventListener('click', patchedDownloadSettings);
 
+// ── Cadence Integration ─────────────────────────────────────────────
+
+const cadenceTokenInput = document.getElementById('cadence-token');
+const cadenceTestButton = document.getElementById('cadence-test-connection');
+const cadenceStatusEl = document.getElementById('cadence-status');
+
+const showCadenceStatus = (message, type = 'error') => {
+  cadenceStatusEl.textContent = message;
+  cadenceStatusEl.className = `github-status-msg ${type}`;
+  cadenceStatusEl.hidden = false;
+  if (type === 'success') {
+    setTimeout(() => { cadenceStatusEl.hidden = true; }, 3000);
+  }
+};
+
+const hideCadenceStatus = () => {
+  cadenceStatusEl.hidden = true;
+};
+
+const loadCadenceSettings = () => {
+  if (!chrome?.storage?.local) return;
+  chrome.storage.local.get(
+    { [STORAGE_CADENCE_TOKEN]: '' },
+    (result) => {
+      cadenceTokenInput.value = result[STORAGE_CADENCE_TOKEN] || '';
+    }
+  );
+};
+
+cadenceTestButton.addEventListener('click', async () => {
+  const token = cadenceTokenInput.value.trim();
+  if (!token) {
+    showCadenceStatus('Please enter your Bearer Token.');
+    return;
+  }
+  hideCadenceStatus();
+  cadenceTestButton.disabled = true;
+  cadenceTestButton.textContent = 'Testing\u2026';
+  try {
+    const res = await fetch(`${CADENCE_BASE_URL}/tasks`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json'
+      }
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`API returned ${res.status}${text ? ': ' + text : ''}`);
+    }
+    const data = await res.json();
+    const count = Array.isArray(data.data) ? data.data.length : 0;
+    showCadenceStatus(`Connected! Found ${count} task(s).`, 'success');
+  } catch (err) {
+    showCadenceStatus(err.message || 'Connection failed.');
+  } finally {
+    cadenceTestButton.disabled = false;
+    cadenceTestButton.textContent = 'Test Connection';
+  }
+});
+
+// Save Cadence settings on form submit
+form.addEventListener('submit', () => {
+  const token = cadenceTokenInput.value.trim();
+  if (chrome?.storage?.local) {
+    chrome.storage.local.set({
+      [STORAGE_CADENCE_TOKEN]: token
+    });
+  }
+});
+
 loadSettings();
 loadGitHubSettings();
+loadCadenceSettings();

@@ -7,7 +7,7 @@
     "default_title": "Nathanael's Developer Tool"
   },
   "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms"],
-  "host_permissions": ["https://api.github.com/*"],
+  "host_permissions": ["https://api.github.com/*", "https://withcadence.online/*"],
   "background": {
     "service_worker": "background.js"
   },
