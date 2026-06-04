@@ -190,6 +190,32 @@
         flex-direction: column;
         gap: 8px;
         padding-left: 8px;
+        min-height: 18px;
+      }
+      .drag-handle {
+        cursor: grab;
+        user-select: none;
+        color: rgba(15, 23, 42, 0.35);
+        font-size: 0.95rem;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 6px;
+        flex: 0 0 auto;
+        touch-action: none;
+        transition: color 120ms ease, background-color 120ms ease;
+      }
+      .drag-handle:hover {
+        color: rgba(99, 102, 241, 0.9);
+        background: rgba(99, 102, 241, 0.1);
+      }
+      .drag-handle:active {
+        cursor: grabbing;
+      }
+      .app-row.dragging,
+      .category-section.dragging {
+        opacity: 0.45;
+        outline: 2px dashed rgba(99, 102, 241, 0.6);
+        outline-offset: 2px;
       }
       .app-row.has-break {
         border-left: 3px solid rgba(99, 102, 241, 0.4);
@@ -383,6 +409,7 @@
     <template id="category-template">
       <div class="category-section">
         <div class="category-header-row">
+          <span class="drag-handle category-drag-handle" title="Drag to reorder category" aria-label="Drag to reorder category">&#x2630;</span>
           <input type="text" class="category-name" placeholder="Category Name" spellcheck="false" />
           <button type="button" class="add-app category-add-app">Add app</button>
           <button type="button" class="add-app category-add-break">Add break</button>
@@ -393,6 +420,7 @@
     </template>
     <template id="app-row-template">
       <div class="app-row">
+        <span class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#x283F;</span>
         <input type="text" class="app-name" placeholder="Name" spellcheck="false" />
         <input type="url" class="app-url" placeholder="https://example.local/" spellcheck="false" />
         <button type="button" class="remove-app">Remove</button>
@@ -400,6 +428,7 @@
     </template>
     <template id="app-break-template">
       <div class="app-row has-break">
+        <span class="drag-handle" title="Drag to reorder" aria-label="Drag to reorder">&#x283F;</span>
         <span class="break-label">Line Break</span>
         <button type="button" class="remove-app">Remove</button>
       </div>

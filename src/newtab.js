@@ -660,11 +660,8 @@ function renderNotifList(container, threads) {
     return;
   }
   threads.forEach((thread) => {
-    const card = document.createElement('a');
+    const card = document.createElement('div');
     card.className = 'notif-card' + (thread.unread ? ' unread' : '');
-    card.href = thread.htmlUrl;
-    card.target = '_blank';
-    card.rel = 'noopener';
 
     const author = thread.commentAuthor ? escapeHtml(thread.commentAuthor) : '';
     const body = thread.commentBody ? escapeHtml(thread.commentBody) : '';
@@ -672,7 +669,10 @@ function renderNotifList(container, threads) {
     const timeStr = time ? formatRelativeTime(new Date(time).getTime()) : '';
 
     card.innerHTML = `
-      <span class="notif-subject">${escapeHtml(thread.subjectTitle)}</span>
+      <div class="notif-top-row">
+        <a class="notif-subject" href="${escapeHtml(thread.htmlUrl)}" target="_blank" rel="noopener">${escapeHtml(thread.subjectTitle)}</a>
+        <button class="notif-done-btn" data-thread-id="${escapeHtml(thread.id)}" type="button" title="Mark as done">Done</button>
+      </div>
       <div class="notif-meta">
         ${author ? `<span class="notif-author">@${author}</span>` : ''}
         <span class="notif-reason">${friendlyReason(thread.reason)}</span>
@@ -681,6 +681,30 @@ function renderNotifList(container, threads) {
       ${body ? `<p class="notif-body">${body}</p>` : ''}
       <span class="notif-repo">${escapeHtml(thread.repoFullName)}</span>
     `;
+
+    card.querySelector('.notif-done-btn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        await markNotificationDone(thread.id);
+        card.remove();
+        // Update count
+        const remaining = container.querySelectorAll('.notif-card').length;
+        const countEl = document.getElementById('notif-count');
+        if (countEl) countEl.textContent = remaining > 0 ? `${remaining} total` : '';
+        if (remaining === 0) {
+          container.innerHTML = '<p class="muted">No notifications.</p>';
+        }
+      } catch (err) {
+        console.warn('Failed to mark notification done:', err);
+        btn.disabled = false;
+        btn.textContent = 'Done';
+      }
+    });
+
     container.appendChild(card);
   });
 }
@@ -758,7 +782,7 @@ async function initGitHubTasks({ showNotifications = true } = {}) {
     }
   }
 
-  // Manual refresh
+  // Manual refresh — GitHub tasks
   if (refreshBtn) {
     refreshBtn.addEventListener('click', async () => {
       refreshBtn.disabled = true;
@@ -774,6 +798,26 @@ async function initGitHubTasks({ showNotifications = true } = {}) {
         errorEl.textContent = err.message || 'Failed to refresh.';
       } finally {
         refreshBtn.disabled = false;
+      }
+    });
+  }
+
+  // Manual refresh — Notifications
+  const notifRefreshBtn = document.getElementById('notif-refresh');
+  if (notifRefreshBtn) {
+    notifRefreshBtn.addEventListener('click', async () => {
+      notifRefreshBtn.disabled = true;
+      try {
+        const { tasks, notifications } = await refreshAndCacheTasks();
+        renderTasksList(listEl, tasks, notifications.unreadByIssueUrl || {});
+        countEl.textContent = `${tasks.length} task${tasks.length !== 1 ? 's' : ''}`;
+        updatedEl.textContent = 'just now';
+        errorEl.hidden = true;
+        if (showNotifications) updateNotifPanel(notifications);
+      } catch (err) {
+        console.warn('Notification refresh failed:', err);
+      } finally {
+        notifRefreshBtn.disabled = false;
       }
     });
   }
@@ -818,37 +862,74 @@ function renderCadenceActiveTimer(container, timer) {
   `;
 }
 
-function renderCadenceTasksList(container, tasks, activeTimer) {
+function cadenceTaskMatchesFilter(task, query) {
+  if (!query) return true;
+  const haystack = [
+    task.title,
+    task.jira_key,
+    task.project_key,
+    task.status?.name
+  ].filter(Boolean).join(' ').toLowerCase();
+  return haystack.includes(query);
+}
+
+function buildCadenceTaskCard(task, { isTimerActive, isPinned }) {
+  const card = document.createElement('div');
+  card.className = 'cadence-task-card';
+  if (isTimerActive) card.classList.add('timer-active');
+  if (isPinned) card.classList.add('pinned');
+
+  const slug = cadenceStatusSlug(task.status?.name);
+  const statusName = task.status?.name || '';
+  const key = task.jira_key || '';
+  const projectKey = task.project_key || '';
+
+  const ticketUrl = key ? `https://withcadence.online/dashboard?ticket=${encodeURIComponent(key)}` : '';
+  const titleHtml = ticketUrl
+    ? `<a class="cadence-task-title" href="${escapeHtml(ticketUrl)}" target="_blank" rel="noopener" title="View ${escapeHtml(key)} in Cadence">${escapeHtml(task.title)}</a>`
+    : `<span class="cadence-task-title">${escapeHtml(task.title)}</span>`;
+
+  card.innerHTML = `
+    ${isPinned ? '<span class="cadence-task-pin">&#x1F4CC; Running</span>' : ''}
+    ${titleHtml}
+    <span class="cadence-task-key">${escapeHtml(key)}${projectKey ? ' &middot; ' + escapeHtml(projectKey) : ''}</span>
+    <div class="cadence-task-badges">
+      ${statusName ? `<span class="cadence-task-status" data-status="${slug}">${escapeHtml(statusName)}</span>` : ''}
+      ${typeof task.ticket_percentage === 'number' ? `<span class="cadence-task-progress">${task.ticket_percentage}%</span>` : ''}
+      ${task.estimate_on_track !== undefined ? `<span class="cadence-task-track" data-track="${task.estimate_on_track ? 'on' : 'off'}">${task.estimate_on_track ? 'On track' : 'Off track'}</span>` : ''}
+      <button class="cadence-timer-btn${isTimerActive ? ' active' : ''}" type="button" data-jira-key="${escapeHtml(key)}" title="${isTimerActive ? 'Timer running' : 'Start timer'}">
+        ${isTimerActive ? '&#x23F9;' : '&#x25B6;'}
+      </button>
+    </div>
+  `;
+  return card;
+}
+
+function renderCadenceTasksList(container, tasks, activeTimer, filterQuery = '') {
   container.innerHTML = '';
   if (!tasks || tasks.length === 0) {
     container.innerHTML = '<p class="muted">No tasks assigned to you.</p>';
     return;
   }
-  tasks.forEach((task) => {
-    const card = document.createElement('div');
-    card.className = 'cadence-task-card';
 
-    const isTimerActive = activeTimer && activeTimer.jira_key === task.jira_key;
-    if (isTimerActive) card.classList.add('timer-active');
+  const query = filterQuery.trim().toLowerCase();
+  const activeKey = activeTimer?.jira_key || null;
 
-    const slug = cadenceStatusSlug(task.status?.name);
-    const statusName = task.status?.name || '';
-    const key = task.jira_key || '';
-    const projectKey = task.project_key || '';
+  // The task with a running timer is always pinned to the top, even when the
+  // filter would otherwise exclude it.
+  const pinnedTask = activeKey ? tasks.find((t) => t.jira_key === activeKey) : null;
+  const rest = tasks.filter((t) => t !== pinnedTask && cadenceTaskMatchesFilter(t, query));
+  const ordered = pinnedTask ? [pinnedTask, ...rest] : rest;
 
-    card.innerHTML = `
-      <span class="cadence-task-title">${escapeHtml(task.title)}</span>
-      <span class="cadence-task-key">${escapeHtml(key)}${projectKey ? ' &middot; ' + escapeHtml(projectKey) : ''}</span>
-      <div class="cadence-task-badges">
-        ${statusName ? `<span class="cadence-task-status" data-status="${slug}">${escapeHtml(statusName)}</span>` : ''}
-        ${typeof task.ticket_percentage === 'number' ? `<span class="cadence-task-progress">${task.ticket_percentage}%</span>` : ''}
-        ${task.estimate_on_track !== undefined ? `<span class="cadence-task-track" data-track="${task.estimate_on_track ? 'on' : 'off'}">${task.estimate_on_track ? 'On track' : 'Off track'}</span>` : ''}
-        <button class="cadence-timer-btn${isTimerActive ? ' active' : ''}" type="button" data-jira-key="${escapeHtml(key)}" title="${isTimerActive ? 'Timer running' : 'Start timer'}">
-          ${isTimerActive ? '&#x23F9;' : '&#x25B6;'}
-        </button>
-      </div>
-    `;
-    container.appendChild(card);
+  if (ordered.length === 0) {
+    container.innerHTML = '<p class="muted">No tasks match your filter.</p>';
+    return;
+  }
+
+  ordered.forEach((task) => {
+    const isPinned = task === pinnedTask;
+    const isTimerActive = activeKey !== null && task.jira_key === activeKey;
+    container.appendChild(buildCadenceTaskCard(task, { isTimerActive, isPinned }));
   });
 }
 
@@ -1028,6 +1109,7 @@ async function initCadenceTasks() {
   const refreshBtn = document.getElementById('cadence-tasks-refresh');
   const openOptionsBtn = document.getElementById('cadence-open-options');
   const timerEl = document.getElementById('cadence-active-timer');
+  const filterEl = document.getElementById('cadence-tasks-filter');
 
   if (!section) return;
 
@@ -1044,11 +1126,27 @@ async function initCadenceTasks() {
 
   section.hidden = false;
   unconfiguredEl.hidden = true;
+  if (filterEl) filterEl.hidden = false;
+
+  // Holds the latest tasks/timer so the filter input can re-render locally
+  // without re-fetching.
+  let currentTasks = [];
+  let currentTimer = null;
+
+  const renderList = () => {
+    renderCadenceTasksList(listEl, currentTasks, currentTimer, filterEl?.value || '');
+  };
+
+  if (filterEl) {
+    filterEl.addEventListener('input', renderList);
+  }
 
   const refreshUI = (result) => {
-    renderCadenceTasksList(listEl, result.tasks, result.activeTimer);
+    currentTasks = result.tasks || [];
+    currentTimer = result.activeTimer || null;
+    renderList();
     renderCadenceActiveTimer(timerEl, result.activeTimer);
-    countEl.textContent = `${result.tasks.length} task${result.tasks.length !== 1 ? 's' : ''}`;
+    countEl.textContent = `${currentTasks.length} task${currentTasks.length !== 1 ? 's' : ''}`;
     updatedEl.textContent = 'just now';
     errorEl.hidden = true;
   };
@@ -1078,7 +1176,9 @@ async function initCadenceTasks() {
   // Show cached data immediately
   const cached = await getCachedCadenceTasks();
   if (cached && cached.tasks) {
-    renderCadenceTasksList(listEl, cached.tasks, cached.activeTimer);
+    currentTasks = cached.tasks;
+    currentTimer = cached.activeTimer || null;
+    renderList();
     renderCadenceActiveTimer(timerEl, cached.activeTimer);
     countEl.textContent = `${cached.tasks.length} task${cached.tasks.length !== 1 ? 's' : ''}`;
     updatedEl.textContent = formatRelativeTime(cached.lastFetched);
@@ -1144,6 +1244,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const cadenceReady = await isCadenceConfigured();
   if (cadenceReady) {
     const features = await getFeatures();
+    const firstName = getCachedFirstName(features);
+    const welcomeEl = document.getElementById('welcome-heading');
+    if (welcomeEl && firstName) {
+      welcomeEl.textContent = `Welcome, ${firstName}`;
+    }
     const showTasks = hasFeature(features, 'git-project-list');
     const showNotifs = hasFeature(features, 'git-notifications-list');
     if (showTasks || showNotifs) {
@@ -1154,6 +1259,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       const tasksSection = document.getElementById('github-tasks-section');
       if (tasksSection) tasksSection.hidden = true;
     }
+  }
+
+  // Refresh all data — clear every cache key and reload
+  const refreshAllBtn = document.getElementById('refresh-all');
+  if (refreshAllBtn) {
+    refreshAllBtn.addEventListener('click', async () => {
+      refreshAllBtn.disabled = true;
+      try {
+        await storageSet({
+          cadenceTasksCache: null,
+          cadenceFeatures: null,
+          githubTasksCache: null,
+          githubNotificationsCache: null
+        });
+        location.reload();
+      } catch (err) {
+        console.warn('Refresh all failed:', err);
+        refreshAllBtn.disabled = false;
+      }
+    });
   }
 
   const searchForm = document.getElementById('search-form');

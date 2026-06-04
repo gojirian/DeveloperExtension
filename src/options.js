@@ -82,6 +82,98 @@ const collectDashboardItems = () => {
     .filter(Boolean);
 };
 
+// ── Drag & drop reordering ───────────────────────────────────────────
+// Apps can be reordered within a category and moved between categories;
+// categories can be reordered amongst themselves. We use native HTML5 DnD
+// with a dedicated handle so the text inputs stay fully usable.
+let draggedEl = null;
+let draggedType = null; // 'app' | 'category'
+
+const getInsertBeforeElement = (container, selector, y, exclude) => {
+  const els = Array.from(container.querySelectorAll(selector)).filter(
+    (el) => el !== exclude && el.parentElement === container
+  );
+  for (const el of els) {
+    const rect = el.getBoundingClientRect();
+    if (y < rect.top + rect.height / 2) {
+      return el;
+    }
+  }
+  return null;
+};
+
+// Turn `el` into a draggable item whose drag is initiated only from `handle`.
+const setupDraggable = (el, type, handle) => {
+  if (!handle) return;
+  handle.addEventListener('mousedown', () => {
+    el.draggable = true;
+  });
+  const disable = () => {
+    el.draggable = false;
+  };
+  handle.addEventListener('mouseup', disable);
+  handle.addEventListener('mouseleave', () => {
+    // Keep draggable if a drag is already in progress for this element.
+    if (draggedEl !== el) el.draggable = false;
+  });
+
+  el.addEventListener('dragstart', (event) => {
+    event.stopPropagation(); // don't let an app drag bubble to its category
+    draggedEl = el;
+    draggedType = type;
+    el.classList.add('dragging');
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', ''); // Firefox requires data
+    }
+  });
+
+  el.addEventListener('dragend', (event) => {
+    event.stopPropagation();
+    el.classList.remove('dragging');
+    el.draggable = false;
+    draggedEl = null;
+    draggedType = null;
+  });
+};
+
+const initCategoriesDragAndDrop = () => {
+  categoriesList.addEventListener('dragover', (event) => {
+    if (!draggedEl) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+
+    if (draggedType === 'category') {
+      const before = getInsertBeforeElement(categoriesList, '.category-section', event.clientY, draggedEl);
+      if (before == null) {
+        categoriesList.appendChild(draggedEl);
+      } else {
+        categoriesList.insertBefore(draggedEl, before);
+      }
+      return;
+    }
+
+    if (draggedType === 'app') {
+      const section = event.target.closest('.category-section');
+      const list = event.target.closest('.category-apps-list') ||
+        section?.querySelector('.category-apps-list');
+      if (!list) return;
+      const before = getInsertBeforeElement(list, '.app-row', event.clientY, draggedEl);
+      if (before == null) {
+        list.appendChild(draggedEl);
+      } else {
+        list.insertBefore(draggedEl, before);
+      }
+    }
+  });
+
+  // The live reorder during dragover does the work; drop just needs to be allowed.
+  categoriesList.addEventListener('drop', (event) => {
+    if (!draggedEl) return;
+    event.preventDefault();
+  });
+};
+
 // Category and Apps functions
 const createAppRow = (app, categoryAppsList) => {
   if (app.break === true) {
@@ -91,6 +183,7 @@ const createAppRow = (app, categoryAppsList) => {
     removeButton.addEventListener('click', () => {
       row.remove();
     });
+    setupDraggable(row, 'app', row.querySelector('.drag-handle'));
     categoryAppsList.appendChild(fragment);
   } else {
     const fragment = appTemplate.content.cloneNode(true);
@@ -106,6 +199,7 @@ const createAppRow = (app, categoryAppsList) => {
       row.remove();
     });
 
+    setupDraggable(row, 'app', row.querySelector('.drag-handle'));
     categoryAppsList.appendChild(fragment);
   }
 };
@@ -118,8 +212,11 @@ const createCategorySection = (category = { category: '', apps: [] }) => {
   const addAppButton = section.querySelector('.category-add-app');
   const addBreakButton = section.querySelector('.category-add-break');
   const removeButton = section.querySelector('.remove-category');
+  const dragHandle = section.querySelector('.category-drag-handle');
 
   nameInput.value = category.category || '';
+
+  setupDraggable(section, 'category', dragHandle);
 
   if (category.apps && category.apps.length) {
     category.apps.forEach((app) => createAppRow(app, appsList));
@@ -639,6 +736,7 @@ form.addEventListener('submit', () => {
   }
 });
 
+initCategoriesDragAndDrop();
 loadSettings();
 loadGitHubSettings();
 loadCadenceSettings();
