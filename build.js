@@ -90,11 +90,13 @@ async function build() {
     },
     permissions: [
       ...new Set([
-        ...manifest.permissions,
+        // Firefox has no favicon cache API; the palette falls back to icons.
+        ...manifest.permissions.filter((permission) => permission !== 'favicon'),
         ...(manifest.host_permissions || [])
       ])
     ],
-    web_accessible_resources: []
+    // MV2 takes a flat list of paths instead of MV3 resource/match objects
+    web_accessible_resources: (manifest.web_accessible_resources || []).flatMap((entry) => entry.resources)
   };
   delete firefoxManifest.action;
   delete firefoxManifest.host_permissions;

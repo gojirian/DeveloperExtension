@@ -1319,3 +1319,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     input.focus();
   }
 });
+
+// Command palette: the new tab page can't be scripted by the background
+// worker, so it answers the shortcut itself. Only the tab the shortcut was
+// pressed in replies; others stay silent so the background can fall back.
+let paletteTabId = null;
+if (chrome?.tabs && chrome?.runtime?.onMessage) {
+  getCurrentTab().then((tab) => {
+    paletteTabId = tab?.id ?? null;
+  });
+  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message?.type !== 'cadence-palette:toggle' || message.tabId !== paletteTabId) return;
+    globalThis.cadencePalette?.toggle(paletteTabId);
+    sendResponse({ ok: true });
+  });
+}

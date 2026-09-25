@@ -18,7 +18,7 @@
       "128": "icons/icon-128.png"
     }
   },
-  "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms"],
+  "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms", "scripting", "activeTab", "history", "favicon"],
   "host_permissions": ["https://api.github.com/*", "https://withcadence.online/*"],
   "background": {
     "service_worker": "background.js"
@@ -27,6 +27,15 @@
     "newtab": "src/newtab.html"
   },
   "options_page": "src/options.html",
+  "commands": {
+    "open-command-palette": {
+      "suggested_key": { "default": "Ctrl+Shift+P", "mac": "Command+Shift+P" },
+      "description": "Open the command palette"
+    }
+  },
+  "web_accessible_resources": [
+    { "resources": ["src/palette.html"], "matches": ["<all_urls>"] }
+  ],
   "content_scripts": [
     {
       "matches": ["https://github.com/*"],
