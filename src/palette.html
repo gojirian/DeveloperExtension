@@ -18,6 +18,8 @@
         --row-active: rgba(99, 102, 241, 0.18);
         --chip: rgba(148, 163, 184, 0.12);
         --success: #34d399;
+        --danger: #fca5a5;
+        --danger-soft: rgba(248, 113, 113, 0.16);
       }
       * {
         box-sizing: border-box;
@@ -59,6 +61,7 @@
         border-radius: 14px;
         box-shadow: 0 30px 60px rgba(2, 6, 23, 0.55);
         overflow: hidden;
+        position: relative;
       }
       body[data-mode="window"] .palette {
         width: 100%;
@@ -210,6 +213,63 @@
         background: var(--accent);
         vertical-align: middle;
       }
+      .palette-item[data-danger="true"] .palette-icon,
+      .palette-item[data-danger="true"] .palette-title {
+        color: var(--danger);
+      }
+      .palette-row-button {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        visibility: hidden;
+      }
+      .palette-item[aria-selected="true"] .palette-row-button,
+      .palette-item:hover .palette-row-button {
+        visibility: visible;
+      }
+      .palette-row-button:hover {
+        background: var(--chip);
+        color: var(--text);
+      }
+      .palette-row-button[data-row-action="dismiss"]:hover {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+      .palette-crumb {
+        align-self: center;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .palette-toast {
+        position: absolute;
+        right: 12px;
+        bottom: 44px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: #1e293b;
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-size: 12px;
+        box-shadow: 0 8px 20px rgba(2, 6, 23, 0.5);
+      }
+      .palette-toast[data-error="true"] {
+        color: var(--danger);
+      }
+      .palette-toast[hidden] {
+        display: none;
+      }
       .palette-empty {
         padding: 28px 16px;
         text-align: center;
@@ -255,10 +315,12 @@
         <div class="palette-footer">
           <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
           <span><kbd>Enter</kbd> open</span>
-          <span><kbd>Ctrl</kbd>+<kbd>Enter</kbd> new tab</span>
-          <span><kbd>Tab</kbd> next filter</span>
-          <span><kbd>Esc</kbd> close</span>
+          <span><kbd>→</kbd> actions</span>
+          <span><kbd>Shift</kbd>+<kbd>Del</kbd> close / dismiss</span>
+          <span><kbd>Tab</kbd> filter</span>
+          <span><kbd>Esc</kbd> back / close</span>
         </div>
+        <div class="palette-toast" id="palette-toast" role="status" aria-live="polite" hidden></div>
       </div>
     </div>
     <script src="github-tasks.js"></script>

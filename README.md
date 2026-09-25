@@ -17,6 +17,15 @@ Press **Ctrl+Shift+P** (**Cmd+Shift+P** on macOS) on any page to open the palett
 
 **Enter** switches to the tab if the item is already open, otherwise opens it in a new tab (or in place on the new tab page). **Ctrl+Enter** always opens a new tab. On pages extensions cannot script (`chrome://` pages, the Web Store) the palette opens as a small popup window instead.
 
+Press **→** (or **Ctrl+K**) on any result for its actions:
+
+- **Tabs** — switch, close, show or close other tabs on the same site, move to this window or a new one, pin, mute, reload, duplicate, copy link or title
+- **Quick links, bookmarks, history** — open (here, new tab, new window), show or close every open tab on that site, copy link, remove from history
+- **GitHub issues, PRs, notifications** — open, mark notification done, show or close open tabs in that repo, copy link or `owner/repo#123` reference
+- **Cadence tasks** — open in Cadence, start (or switch) the timer, show or close tabs mentioning the ticket key, copy key
+
+**Shift+Delete** closes the selected tab, removes a history entry, or marks a notification done. Searching tabs adds a **Close all matching tabs** row. Quick links show how many tabs are already open on their site.
+
 If the shortcut does nothing, another extension may have claimed it — rebind it at `chrome://extensions/shortcuts`. In Firefox, Ctrl+Shift+P opens a private window, so assign a different key under Manage Extension Shortcuts.
 
 ### Gmail Semi-Dark Theme

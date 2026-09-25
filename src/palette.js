@@ -60,7 +60,19 @@ const ICONS = {
   timer: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></svg>',
   issue: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>',
   pr: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="18" r="2.5"/><path d="M6 8.5v7"/><path d="M18 15.5V9a3 3 0 0 0-3-3h-4"/><path d="m13 3-3 3 3 3"/></svg>',
-  notification: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>'
+  notification: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>',
+  // Action-menu icons
+  open: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4 10 14"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>',
+  window: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="14" height="12" rx="2"/><path d="M7 20h12a2 2 0 0 0 2-2V8"/></svg>',
+  tabs: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="7" width="14" height="13" rx="2"/><path d="M3 16V6a2 2 0 0 1 2-2h10"/></svg>',
+  close: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  copy: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg>',
+  pin: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg>',
+  sound: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H3v6h3l5 4z"/><path d="M16 9a4 4 0 0 1 0 6"/></svg>',
+  reload: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>',
+  play: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 4 13 8-13 8z"/></svg>',
+  check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5L20 7"/></svg>',
+  more: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>'
 };
 
 const state = {
@@ -68,13 +80,19 @@ const state = {
   history: [],
   scope: 'all',
   results: [],
-  selected: 0
+  selected: 0,
+  // Drill-down views (action menus, "open tabs on this site" lists). Each is
+  // { title, getItems(), subject?, tabList?, query, selected } — query and
+  // selected restore the parent view on the way back out.
+  stack: []
 };
 
 const inputEl = document.getElementById('palette-input');
 const resultsEl = document.getElementById('palette-results');
 const scopesEl = document.getElementById('palette-scopes');
 const backdropEl = document.getElementById('palette-backdrop');
+const toastEl = document.getElementById('palette-toast');
+const DEFAULT_PLACEHOLDER = inputEl.placeholder;
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -154,6 +172,9 @@ async function loadTabs() {
         url: tab.url,
         tabId: tab.id,
         windowId: tab.windowId,
+        pinned: !!tab.pinned,
+        muted: !!tab.mutedInfo?.muted,
+        audible: !!tab.audible,
         favicon: faviconFor(tab.url, tab.favIconUrl)
       })
     );
@@ -243,7 +264,8 @@ async function loadCadence() {
             title: timer.title || timer.jira_key || 'Timer running',
             subtitle: timer.jira_key || '',
             meta: timer.started_at ? `Started ${formatRelativeTime(new Date(timer.started_at).getTime())}` : 'Running',
-            url: cadenceTicketUrl(timer.jira_key)
+            url: cadenceTicketUrl(timer.jira_key),
+            jiraKey: timer.jira_key || ''
           })
         ]
       : [];
@@ -253,7 +275,8 @@ async function loadCadence() {
         title: task.title || task.jira_key || 'Untitled task',
         subtitle: task.jira_key || '',
         meta: task.status?.name || '',
-        url: cadenceTicketUrl(task.jira_key)
+        url: cadenceTicketUrl(task.jira_key),
+        jiraKey: task.jira_key || ''
       })
     );
     render();
@@ -285,6 +308,8 @@ async function loadGitHub() {
             subtitle: `${task.repoFullName}#${task.issueNumber}`,
             meta: task.status || '',
             url: task.issueUrl,
+            repo: task.repoFullName,
+            reference: `${task.repoFullName}#${task.issueNumber}`,
             keywords: [task.projectTitle, ...(task.labels || [])].join(' ')
           })
         );
@@ -301,6 +326,8 @@ async function loadGitHub() {
           meta: thread.updatedAt ? formatRelativeTime(new Date(thread.updatedAt).getTime()) : '',
           metaUnread: !!thread.unread,
           url: thread.htmlUrl,
+          repo: thread.repoFullName,
+          threadId: thread.id,
           keywords: thread.subjectType
         })
       );
@@ -378,7 +405,25 @@ function scoreItem(item, tokens) {
   return total;
 }
 
+function matchItems(source, tokens) {
+  const scored = [];
+  for (const item of source) {
+    const score = scoreItem(item, tokens);
+    if (score > 0) scored.push({ item, score });
+  }
+  if (tokens.length) scored.sort((a, b) => b.score - a.score);
+  return scored.map((s) => s.item);
+}
+
 function computeResults() {
+  const view = currentView();
+  if (view) {
+    const tokens = inputEl.value.toLowerCase().split(/\s+/).filter(Boolean);
+    const items = matchItems(view.getItems(), tokens);
+    if (view.tabList) appendCloseAll(items, items);
+    return { scope: null, tokens, sections: items.length ? [{ group: { label: view.title }, items }] : [] };
+  }
+
   const { scope, text } = parseQuery(inputEl.value);
   const tokens = text.toLowerCase().split(/\s+/).filter(Boolean);
   const sections = [];
@@ -388,15 +433,22 @@ function computeResults() {
     const limit = scope !== 'all' ? SCOPED_LIMIT : tokens.length ? SEARCH_LIMIT : group.idleLimit ?? SEARCH_LIMIT;
     if (!limit) continue;
     const source = group.id === 'history' ? state.history : state.sources[group.id] || [];
-    const scored = [];
-    for (const item of source) {
-      const score = scoreItem(item, tokens);
-      if (score > 0) scored.push({ item, score });
-    }
-    if (tokens.length) scored.sort((a, b) => b.score - a.score);
-    if (scored.length) sections.push({ group, items: scored.slice(0, limit).map((s) => s.item) });
+    const matched = matchItems(source, tokens);
+    if (!matched.length) continue;
+    const items = matched.slice(0, limit);
+    // Searching tabs: offer to close every match, not just the ones shown.
+    if (group.id === 'tabs' && tokens.length) appendCloseAll(items, matched);
+    sections.push({ group, items });
   }
   return { scope, tokens, sections };
+}
+
+function appendCloseAll(items, matchedTabs) {
+  const tabIds = matchedTabs.filter((item) => item.kind === 'tab').map((item) => item.tabId);
+  if (tabIds.length < 2) return;
+  items.push(
+    actionItem('close', `Close all ${tabIds.length} matching tabs`, () => closeTabs(tabIds), { danger: true })
+  );
 }
 
 // ── Rendering ────────────────────────────────────────────────────────
@@ -424,7 +476,26 @@ function highlight(text, tokens) {
   return open ? `${html}</mark>` : html;
 }
 
+function countTabsByHost() {
+  const counts = new Map();
+  for (const tab of state.sources.tabs || []) {
+    const host = hostnameOf(tab.url);
+    if (host) counts.set(host, (counts.get(host) || 0) + 1);
+  }
+  return counts;
+}
+
+// Quick links and bookmarks show how many tabs are already open on that site.
+function openCountLabel(item, hostCounts) {
+  if (item.kind !== 'link' && item.kind !== 'bookmark') return '';
+  const count = hostCounts.get(hostnameOf(item.url)) || 0;
+  return count ? `${count} open` : '';
+}
+
 function renderIcon(item) {
+  if (item.kind === 'action') {
+    return `<span class="palette-icon" data-kind="action">${ICONS[item.icon] || ICONS.more}</span>`;
+  }
   const fallback = ICONS[item.kind] || ICONS.link;
   if (!item.favicon) {
     return `<span class="palette-icon" data-kind="${item.kind}">${fallback}</span>`;
@@ -433,6 +504,13 @@ function renderIcon(item) {
 }
 
 function renderScopes(activeScope) {
+  const view = currentView();
+  if (view) {
+    scopesEl.innerHTML =
+      `<button type="button" class="palette-scope palette-back" data-back="true">← Back<kbd>esc</kbd></button>` +
+      `<span class="palette-crumb">${escapeHtml(view.title)}</span>`;
+    return;
+  }
   scopesEl.innerHTML = SCOPES.map(
     (scope) =>
       `<button type="button" class="palette-scope" data-scope="${scope.id}" aria-pressed="${scope.id === activeScope}">` +
@@ -453,20 +531,29 @@ function render() {
     return;
   }
 
+  const hostCounts = countTabsByHost();
   let index = 0;
   resultsEl.innerHTML = sections
     .map((section) => {
       const rows = section.items
         .map((item) => {
           const i = index++;
+          const meta = item.meta || openCountLabel(item, hostCounts);
+          const dismiss = dismissLabel(item);
           return (
-            `<div class="palette-item" role="option" id="palette-item-${i}" data-index="${i}" aria-selected="${i === state.selected}">` +
+            `<div class="palette-item" role="option" id="palette-item-${i}" data-index="${i}" aria-selected="${i === state.selected}"${item.danger ? ' data-danger="true"' : ''}>` +
             renderIcon(item) +
             '<div class="palette-text">' +
             `<div class="palette-title">${highlight(item.title, tokens)}</div>` +
             (item.subtitle ? `<div class="palette-subtitle">${escapeHtml(item.subtitle)}</div>` : '') +
             '</div>' +
-            (item.meta ? `<span class="palette-meta" data-unread="${!!item.metaUnread}">${escapeHtml(item.meta)}</span>` : '') +
+            (meta ? `<span class="palette-meta" data-unread="${!!item.metaUnread}">${escapeHtml(meta)}</span>` : '') +
+            (dismiss
+              ? `<button type="button" class="palette-row-button" data-row-action="dismiss" title="${escapeHtml(dismiss)} (Shift+Delete)" aria-label="${escapeHtml(dismiss)}">${ICONS.close}</button>`
+              : '') +
+            (item.kind !== 'action'
+              ? `<button type="button" class="palette-row-button" data-row-action="actions" title="More actions (→)" aria-label="More actions">${ICONS.more}</button>`
+              : '') +
             '</div>'
           );
         })
@@ -549,6 +636,17 @@ async function openUrl(url, { newTab }, origin) {
 
 async function activate(item, { newTab = false } = {}) {
   if (!item) return;
+  if (item.run) {
+    // Menu actions manage the palette themselves: navigation closes it,
+    // everything else (close, copy, pin, …) keeps it open for the next one.
+    try {
+      await item.run();
+    } catch (err) {
+      console.warn('Command palette action failed:', err);
+      showToast(err.message || 'Action failed', { error: true });
+    }
+    return;
+  }
   try {
     const origin = await getOriginTab();
     if (item.tabId != null && !newTab) {
@@ -560,6 +658,313 @@ async function activate(item, { newTab = false } = {}) {
     console.warn('Command palette action failed:', err);
   } finally {
     closePalette();
+  }
+}
+
+// ── Item actions ─────────────────────────────────────────────────────
+
+function actionItem(icon, title, run, extra = {}) {
+  return makeItem({ kind: 'action', icon, title, run, ...extra });
+}
+
+function tabsWhere(predicate) {
+  return (state.sources.tabs || []).filter(predicate);
+}
+
+function tabsOnHost(url) {
+  const host = hostnameOf(url);
+  return host ? tabsWhere((tab) => hostnameOf(tab.url) === host) : [];
+}
+
+function tabsInRepo(repo) {
+  if (!repo) return [];
+  const prefix = `https://github.com/${repo.toLowerCase()}`;
+  return tabsWhere((tab) => {
+    const url = (tab.url || '').toLowerCase();
+    return url === prefix || url.startsWith(`${prefix}/`);
+  });
+}
+
+// Tabs whose title or URL mention a Jira key: the Jira ticket itself, PRs
+// and branches named after it, Cadence, …
+function tabsMentioning(key) {
+  if (!key) return [];
+  const needle = key.toLowerCase();
+  return tabsWhere((tab) => `${tab.title} ${tab.url}`.toLowerCase().includes(needle));
+}
+
+// Two rows for a related set of tabs: drill into them, or close them all.
+// `except` leaves the tab the menu was opened on out of the count.
+function tabGroupActions(tabs, label, { except } = {}) {
+  const others = tabs.filter((tab) => tab.tabId !== except);
+  if (!others.length) return [];
+  const ids = others.map((tab) => tab.tabId);
+  const noun = (n) => (n === 1 ? 'tab' : 'tabs');
+  const title = `${except ? 'Other open' : 'Open'} ${noun(2)} ${label}`;
+  return [
+    actionItem('tabs', `Show ${others.length} ${except ? 'other ' : ''}open ${noun(others.length)} ${label}`, () =>
+      pushView({ title, tabList: true, getItems: () => tabsWhere((tab) => ids.includes(tab.tabId)) })
+    ),
+    actionItem('close', `Close ${others.length} ${except ? 'other ' : ''}${noun(others.length)} ${label}`, () => closeTabs(ids), {
+      danger: true
+    })
+  ];
+}
+
+function urlActions(item) {
+  return [
+    actionItem('open', 'Open', () => activate({ ...item, run: null })),
+    actionItem('tabs', 'Open in new tab', () => activate({ ...item, run: null, tabId: null }, { newTab: true })),
+    actionItem('window', 'Open in new window', async () => {
+      await api.windows.create({ url: item.url, focused: true });
+      closePalette();
+    })
+  ];
+}
+
+function copyAction(label, text) {
+  return text ? actionItem('copy', label, () => copyText(text), { subtitle: text }) : null;
+}
+
+function actionsFor(item, origin) {
+  const host = hostnameOf(item.url);
+  let actions = [];
+
+  switch (item.kind) {
+    case 'tab':
+      actions = [
+        actionItem('open', 'Switch to tab', () => activate({ ...item, run: null })),
+        actionItem('close', 'Close tab', () => closeTabs([item.tabId]), { danger: true }),
+        ...tabGroupActions(tabsOnHost(item.url), `on ${host}`, { except: item.tabId }),
+        origin && origin.windowId !== item.windowId
+          ? actionItem('window', 'Move to this window', async () => {
+              await api.tabs.move(item.tabId, { windowId: origin.windowId, index: origin.index + 1 });
+              await switchToTab(item.tabId, origin.windowId, origin);
+              closePalette();
+            })
+          : null,
+        actionItem('window', 'Move to new window', async () => {
+          await api.windows.create({ tabId: item.tabId, focused: true });
+          closePalette();
+        }),
+        actionItem('pin', item.pinned ? 'Unpin tab' : 'Pin tab', async () => {
+          await api.tabs.update(item.tabId, { pinned: !item.pinned });
+          await refreshTabs(item.pinned ? 'Unpinned' : 'Pinned');
+        }),
+        item.audible || item.muted
+          ? actionItem('sound', item.muted ? 'Unmute tab' : 'Mute tab', async () => {
+              await api.tabs.update(item.tabId, { muted: !item.muted });
+              await refreshTabs(item.muted ? 'Unmuted' : 'Muted');
+            })
+          : null,
+        actionItem('reload', 'Reload tab', async () => {
+          await api.tabs.reload(item.tabId);
+          showToast('Reloaded');
+        }),
+        actionItem('tabs', 'Duplicate tab', async () => {
+          await api.tabs.duplicate(item.tabId);
+          await refreshTabs('Duplicated');
+        }),
+        copyAction('Copy link', item.url),
+        copyAction('Copy title', item.title)
+      ];
+      break;
+
+    case 'link':
+    case 'bookmark':
+    case 'history':
+      actions = [
+        ...urlActions(item),
+        ...tabGroupActions(tabsOnHost(item.url), `on ${host}`),
+        copyAction('Copy link', item.url),
+        item.kind === 'history'
+          ? actionItem('close', 'Remove from history', () => dismiss(item), { danger: true })
+          : null
+      ];
+      break;
+
+    case 'issue':
+    case 'pr':
+    case 'notification':
+      actions = [
+        ...urlActions(item),
+        item.kind === 'notification'
+          ? actionItem('check', 'Mark as done', () => dismiss(item))
+          : null,
+        ...tabGroupActions(tabsInRepo(item.repo), `in ${item.repo}`),
+        copyAction('Copy link', item.url),
+        copyAction('Copy reference', item.reference)
+      ];
+      break;
+
+    case 'cadence':
+    case 'timer': {
+      const running = state.sources.timer?.[0]?.jiraKey;
+      actions = [
+        actionItem('open', 'Open in Cadence', () => activate({ ...item, run: null })),
+        item.jiraKey && item.jiraKey !== running
+          ? actionItem('play', running ? `Switch timer to ${item.jiraKey}` : 'Start timer', () => startTimer(item.jiraKey))
+          : null,
+        ...tabGroupActions(tabsMentioning(item.jiraKey), `mentioning ${item.jiraKey}`),
+        copyAction('Copy key', item.jiraKey),
+        copyAction('Copy link', item.url)
+      ];
+      break;
+    }
+  }
+  return actions.filter(Boolean);
+}
+
+async function openActions(item) {
+  if (!item || item.kind === 'action') return;
+  const origin = await getOriginTab();
+  // Rebuilt every render so counts and toggles (pin, mute) stay current;
+  // afterMutation pops the view once its subject is gone.
+  const latest = () =>
+    (item.kind === 'tab' && (state.sources.tabs || []).find((tab) => tab.tabId === item.tabId)) || item;
+  pushView({ title: item.title, subject: item, getItems: () => actionsFor(latest(), origin) });
+}
+
+function dismissLabel(item) {
+  if (item.kind === 'tab') return 'Close tab';
+  if (item.kind === 'history') return 'Remove from history';
+  if (item.kind === 'notification') return 'Mark as done';
+  return '';
+}
+
+// Shift+Delete / the row's × button.
+async function dismiss(item) {
+  if (!item) return;
+  try {
+    if (item.kind === 'tab') {
+      await closeTabs([item.tabId]);
+    } else if (item.kind === 'history') {
+      await api.history.deleteUrl({ url: item.url });
+      state.history = state.history.filter((entry) => entry.url !== item.url);
+      afterMutation('Removed from history');
+    } else if (item.kind === 'notification') {
+      await markNotificationDone(item.threadId);
+      state.sources.notifications = (state.sources.notifications || []).filter((n) => n.threadId !== item.threadId);
+      afterMutation('Marked as done');
+    }
+  } catch (err) {
+    console.warn('Command palette dismiss failed:', err);
+    showToast(err.message || 'Could not do that', { error: true });
+  }
+}
+
+async function closeTabs(tabIds) {
+  const ids = new Set(tabIds);
+  try {
+    await api.tabs.remove([...ids]);
+  } catch (err) {
+    // Some may already be gone; the refresh below reconciles.
+    console.warn('Command palette: closing tabs failed', err);
+  }
+  await refreshTabs(ids.size === 1 ? 'Closed tab' : `Closed ${ids.size} tabs`);
+}
+
+async function refreshTabs(message) {
+  state.sources.tabs = await loadTabs();
+  afterMutation(message);
+}
+
+// Re-render after a change, popping any view whose subject no longer exists
+// and any tab list that is now empty.
+function afterMutation(message) {
+  const openTabIds = new Set((state.sources.tabs || []).map((tab) => tab.tabId));
+  const notificationIds = new Set((state.sources.notifications || []).map((n) => n.threadId));
+  const historyUrls = new Set(state.history.map((entry) => entry.url));
+  while (state.stack.length) {
+    const view = currentView();
+    const subject = view.subject;
+    const gone =
+      (subject?.kind === 'tab' && !openTabIds.has(subject.tabId)) ||
+      (subject?.kind === 'notification' && !notificationIds.has(subject.threadId)) ||
+      (subject?.kind === 'history' && !historyUrls.has(subject.url)) ||
+      (view.tabList && view.getItems().length === 0);
+    if (!gone) break;
+    popView({ quiet: true });
+  }
+  render();
+  if (message) showToast(message);
+  inputEl.focus();
+}
+
+async function startTimer(jiraKey) {
+  const cfg = await getCadenceConfig();
+  if (!cfg.token) throw new Error('Connect Cadence in Settings first');
+  try {
+    await startCadenceTimer(cfg.token, jiraKey);
+  } catch (err) {
+    if (err.code !== 'CONFLICT') throw err;
+    // Same as the new tab page: stop the running timer, then start this one.
+    await stopCadenceTimer(cfg.token);
+    await startCadenceTimer(cfg.token, jiraKey);
+  }
+  await storageSet({ [STORAGE_CADENCE_TASKS_CACHE]: null }); // force a refetch
+  await loadCadence();
+  while (state.stack.length) popView({ quiet: true });
+  render();
+  showToast(`Timer started for ${jiraKey}`);
+}
+
+async function copyText(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch (_) {
+    // Clipboard API can be blocked in the overlay frame; fall back.
+    const area = document.createElement('textarea');
+    area.value = text;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    area.remove();
+    inputEl.focus();
+  }
+  showToast('Copied');
+}
+
+let toastTimer = null;
+function showToast(message, { error = false } = {}) {
+  toastEl.textContent = message;
+  toastEl.dataset.error = String(error);
+  toastEl.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toastEl.hidden = true;
+  }, 1800);
+}
+
+// ── Views ────────────────────────────────────────────────────────────
+
+function currentView() {
+  return state.stack[state.stack.length - 1] || null;
+}
+
+function placeholderFor(view) {
+  if (!view) return DEFAULT_PLACEHOLDER;
+  return view.tabList ? 'Filter these tabs…' : 'Search actions…';
+}
+
+function pushView(view) {
+  state.stack.push({ ...view, query: inputEl.value, selected: state.selected });
+  inputEl.value = '';
+  inputEl.placeholder = placeholderFor(view);
+  state.selected = 0;
+  render();
+  inputEl.focus();
+}
+
+function popView({ quiet = false } = {}) {
+  const view = state.stack.pop();
+  if (!view) return;
+  inputEl.value = view.query;
+  inputEl.placeholder = placeholderFor(currentView());
+  state.selected = view.selected;
+  if (!quiet) {
+    render();
+    inputEl.focus();
   }
 }
 
@@ -584,6 +989,7 @@ function onQueryChange() {
   state.selected = 0;
   render();
   clearTimeout(historyTimer);
+  if (currentView()) return; // views filter their own fixed items
   const { scope, text } = parseQuery(inputEl.value);
   if (scope === 'all' || scope === 'history') {
     historyTimer = setTimeout(() => {
@@ -594,8 +1000,36 @@ function onQueryChange() {
 
 inputEl.addEventListener('input', onQueryChange);
 
+const caretAtEnd = () => inputEl.selectionStart === inputEl.value.length && inputEl.selectionEnd === inputEl.value.length;
+
 document.addEventListener('keydown', (event) => {
+  const selectedItem = state.results[state.selected];
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    openActions(selectedItem);
+    return;
+  }
+  if (event.key === 'Delete' && event.shiftKey) {
+    event.preventDefault();
+    if (selectedItem?.kind === 'action') activate(selectedItem);
+    else dismiss(selectedItem);
+    return;
+  }
+
   switch (event.key) {
+    case 'ArrowRight':
+      if (caretAtEnd() && selectedItem && selectedItem.kind !== 'action') {
+        event.preventDefault();
+        openActions(selectedItem);
+      }
+      break;
+    case 'ArrowLeft':
+      if (currentView() && inputEl.value === '') {
+        event.preventDefault();
+        popView();
+      }
+      break;
     case 'ArrowDown':
       event.preventDefault();
       moveSelection(1);
@@ -610,14 +1044,18 @@ document.addEventListener('keydown', (event) => {
       break;
     case 'Escape':
       event.preventDefault();
-      closePalette();
+      if (currentView()) popView();
+      else closePalette();
       break;
     case 'Tab':
       event.preventDefault();
-      cycleScope(event.shiftKey ? -1 : 1);
+      if (!currentView()) cycleScope(event.shiftKey ? -1 : 1);
       break;
     case 'Backspace':
-      if (inputEl.value === '' && state.scope !== 'all') {
+      if (inputEl.value === '' && currentView()) {
+        event.preventDefault();
+        popView();
+      } else if (inputEl.value === '' && state.scope !== 'all') {
         event.preventDefault();
         setScope('all');
       }
@@ -642,7 +1080,11 @@ resultsEl.addEventListener('mousemove', (event) => {
 resultsEl.addEventListener('click', (event) => {
   const row = event.target.closest('.palette-item');
   if (!row) return;
-  activate(state.results[Number(row.dataset.index)], { newTab: event.ctrlKey || event.metaKey || event.shiftKey });
+  const item = state.results[Number(row.dataset.index)];
+  const rowAction = event.target.closest('[data-row-action]')?.dataset.rowAction;
+  if (rowAction === 'dismiss') dismiss(item);
+  else if (rowAction === 'actions') openActions(item);
+  else activate(item, { newTab: event.ctrlKey || event.metaKey || event.shiftKey });
 });
 
 // Favicons that fail to load fall back to the item's kind icon. `error`
@@ -659,7 +1101,9 @@ resultsEl.addEventListener(
 
 scopesEl.addEventListener('click', (event) => {
   const button = event.target.closest('.palette-scope');
-  if (button) setScope(button.dataset.scope);
+  if (!button) return;
+  if (button.dataset.back) popView();
+  else setScope(button.dataset.scope);
 });
 
 backdropEl.addEventListener('mousedown', (event) => {

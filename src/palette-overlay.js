@@ -46,6 +46,7 @@
     frame.src = url.href;
     frame.setAttribute('style', FRAME_STYLE);
     frame.setAttribute('allowtransparency', 'true');
+    frame.setAttribute('allow', 'clipboard-write');
     frame.setAttribute('aria-label', 'Command palette');
     frame.addEventListener('load', () => {
       frame?.focus();
