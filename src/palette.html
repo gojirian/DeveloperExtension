@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Command Palette</title>
+    <style>
+      /* No color-scheme declaration on purpose: the overlay iframe must match
+         the host page's "normal" scheme or Chrome paints it opaque. */
+      :root {
+        --bg: rgba(15, 23, 42, 0.97);
+        --border: rgba(148, 163, 184, 0.22);
+        --text: #f8fafc;
+        --muted: #94a3b8;
+        --faint: #64748b;
+        --accent: #6366f1;
+        --accent-soft: rgba(99, 102, 241, 0.2);
+        --row-active: rgba(99, 102, 241, 0.18);
+        --chip: rgba(148, 163, 184, 0.12);
+        --success: #34d399;
+        --danger: #fca5a5;
+        --danger-soft: rgba(248, 113, 113, 0.16);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 14px;
+        color: var(--text);
+      }
+      body[data-mode="overlay"] {
+        background: rgba(2, 6, 23, 0.45);
+      }
+      body[data-mode="window"] {
+        background: #0f172a;
+      }
+      .palette-backdrop {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 12vh 16px 16px;
+      }
+      body[data-mode="window"] .palette-backdrop {
+        padding: 0;
+        align-items: stretch;
+      }
+      .palette {
+        width: min(680px, 100%);
+        max-height: min(560px, 76vh);
+        display: flex;
+        flex-direction: column;
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 30px 60px rgba(2, 6, 23, 0.55);
+        overflow: hidden;
+        position: relative;
+      }
+      body[data-mode="window"] .palette {
+        width: 100%;
+        max-height: none;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .palette-search,
+      .palette-scopes,
+      .palette-footer {
+        flex: none;
+      }
+      .palette-search {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .palette-search svg {
+        flex: none;
+        color: var(--muted);
+      }
+      #palette-input {
+        flex: 1;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        background: transparent;
+        color: var(--text);
+        font: inherit;
+        font-size: 16px;
+      }
+      #palette-input::placeholder {
+        color: var(--faint);
+      }
+      .palette-scopes {
+        display: flex;
+        gap: 6px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--border);
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .palette-scope {
+        flex: none;
+        border: 1px solid transparent;
+        border-radius: 999px;
+        padding: 3px 10px;
+        background: var(--chip);
+        color: var(--muted);
+        font: inherit;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      .palette-scope:hover {
+        color: var(--text);
+      }
+      .palette-scope[aria-pressed="true"] {
+        background: var(--accent-soft);
+        border-color: rgba(99, 102, 241, 0.5);
+        color: #e0e7ff;
+      }
+      .palette-scope kbd {
+        font-family: inherit;
+        opacity: 0.6;
+        margin-left: 4px;
+      }
+      .palette-results {
+        flex: 1;
+        overflow-y: auto;
+        padding: 6px 0 8px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+      }
+      .palette-group {
+        padding: 10px 16px 4px;
+        color: var(--faint);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      .palette-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0 8px;
+        padding: 8px 10px;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      .palette-item[aria-selected="true"] {
+        background: var(--row-active);
+      }
+      .palette-icon {
+        flex: none;
+        width: 20px;
+        height: 20px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+      }
+      .palette-icon img {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+      }
+      .palette-icon[data-kind="timer"] {
+        color: var(--success);
+      }
+      .palette-text {
+        flex: 1;
+        min-width: 0;
+      }
+      .palette-title,
+      .palette-subtitle {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .palette-subtitle {
+        color: var(--faint);
+        font-size: 12px;
+        margin-top: 1px;
+      }
+      .palette-title mark {
+        background: none;
+        color: #a5b4fc;
+        font-weight: 600;
+      }
+      .palette-meta {
+        flex: none;
+        max-width: 40%;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .palette-meta[data-unread="true"]::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        vertical-align: middle;
+      }
+      .palette-item[data-danger="true"] .palette-icon,
+      .palette-item[data-danger="true"] .palette-title {
+        color: var(--danger);
+      }
+      .palette-row-button {
+        flex: none;
+        width: 26px;
+        height: 26px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--muted);
+        cursor: pointer;
+        visibility: hidden;
+      }
+      .palette-item[aria-selected="true"] .palette-row-button,
+      .palette-item:hover .palette-row-button {
+        visibility: visible;
+      }
+      .palette-row-button:hover {
+        background: var(--chip);
+        color: var(--text);
+      }
+      .palette-row-button[data-row-action="dismiss"]:hover {
+        background: var(--danger-soft);
+        color: var(--danger);
+      }
+      .palette-crumb {
+        align-self: center;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 600;
+      }
+      .palette-toast {
+        position: absolute;
+        right: 12px;
+        bottom: 44px;
+        padding: 6px 12px;
+        border-radius: 8px;
+        background: #1e293b;
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-size: 12px;
+        box-shadow: 0 8px 20px rgba(2, 6, 23, 0.5);
+      }
+      .palette-toast[data-error="true"] {
+        color: var(--danger);
+      }
+      .palette-toast[hidden] {
+        display: none;
+      }
+      .palette-empty {
+        padding: 28px 16px;
+        text-align: center;
+        color: var(--muted);
+      }
+      .palette-footer {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+        padding: 8px 16px;
+        border-top: 1px solid var(--border);
+        color: var(--faint);
+        font-size: 12px;
+      }
+      .palette-footer kbd {
+        font-family: inherit;
+        padding: 0 5px;
+        border-radius: 4px;
+        background: var(--chip);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="palette-backdrop" id="palette-backdrop">
+      <div class="palette" role="dialog" aria-label="Command palette">
+        <div class="palette-search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input
+            id="palette-input"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Search tabs, tasks, GitHub, links, and history…"
+            role="combobox"
+            aria-expanded="true"
+            aria-controls="palette-results"
+            aria-autocomplete="list"
+          />
+        </div>
+        <div class="palette-scopes" id="palette-scopes" role="toolbar" aria-label="Filter by type"></div>
+        <div class="palette-results" id="palette-results" role="listbox" aria-label="Results"></div>
+        <div class="palette-footer">
+          <span><kbd>↑</kbd> <kbd>↓</kbd> move</span>
+          <span><kbd>Enter</kbd> open</span>
+          <span><kbd>→</kbd> actions</span>
+          <span><kbd>Shift</kbd>+<kbd>Del</kbd> close / dismiss</span>
+          <span><kbd>Tab</kbd> filter</span>
+          <span><kbd>Esc</kbd> back / close</span>
+        </div>
+        <div class="palette-toast" id="palette-toast" role="status" aria-live="polite" hidden></div>
+      </div>
+    </div>
+    <script src="github-tasks.js"></script>
+    <script src="cadence-tasks.js"></script>
+    <script src="palette.js"></script>
+  </body>
+</html>

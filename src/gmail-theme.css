@@ -1,0 +1,805 @@
+/* ==========================================================================
+   Gmail Semi-Dark — injected into https://mail.google.com/*
+   Outlook-classic semi-dark: dark chrome on every edge, light mail content.
+
+   Tokens are FINAL (user-approved, see design_handoff_gmail_semidark/README.md).
+   Gmail's class names are obfuscated; selectors marked VERIFY should be
+   re-checked in DevTools when Gmail ships UI updates. Role/aria selectors
+   are preferred where they exist.
+
+   Precondition: Gmail's own theme must be set to Default (light).
+   ========================================================================== */
+
+:root {
+  /* Keep the browser's auto-darkening away from the light mail surfaces */
+  color-scheme: only light;
+
+  /* ---- Edge shades (darkest → lightest) ---- */
+  --gsd-rail:  #151c24; /* far-left mini rail + far-right add-on rail */
+  --gsd-side:  #1f2933; /* left sidebar (Compose, folders, labels) */
+  --gsd-top:   #28333f; /* top bar + column header strips */
+  --gsd-panel: #232e39; /* Tasks / side panel (styled in its own iframe) */
+
+  /* ---- Accent ---- */
+  --gsd-accent:      #ffc700;
+  --gsd-accent-soft: rgba(255, 199, 0, 0.16);
+  --gsd-accent-text: #ffd84d;
+  --gsd-on-accent:   #20242a;
+
+  /* ---- Light content area ---- */
+  --gsd-content:     #f4f4f3;
+  --gsd-row:         #fdfdfc;
+  --gsd-zebra:       rgba(31, 41, 51, 0.044);
+  --gsd-row-hover:   rgba(31, 41, 51, 0.045);
+  --gsd-unread-bg:   #ffffff;
+  --gsd-sel-bg:      #fff7dc;
+  --gsd-hairline:    rgba(31, 41, 51, 0.08);
+  --gsd-col-divider: rgba(31, 41, 51, 0.12);
+
+  /* ---- Text ---- */
+  --gsd-ink:           #1f2328;
+  --gsd-ink-2:         #5a6068;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-edge-hover:    rgba(255, 255, 255, 0.08);
+
+  /* ---- Misc ---- */
+  --gsd-green: #34c759;
+}
+
+/* Paint the app shell dark immediately (document_start): no white→dark flash,
+   and the dark shows through as the gutter around the light mail card.
+   IMPORTANT: never paint generic reused classes (.nN/.nH/.TK/.no/.a3s) dark —
+   Gmail reuses them inside the reading pane and opened emails go dark. */
+html, body {
+  background: var(--gsd-top) !important;
+}
+
+/* --------------------------------------------------------------------------
+   0a. COLUMN FILLS — kill dead white space above/below the chrome columns.
+   Gmail paints the column wrappers white and the themed inner elements don't
+   reach the window bottom. Paint every wrapper of a chrome region in that
+   region's shade, stopping at any wrapper that also contains the light mail
+   area (so the list, toolbar and reading pane are never touched).
+   -------------------------------------------------------------------------- */
+
+/* Column wrappers are tagged at runtime by gmail-theme.js ([data-gsd-col]) so
+   the CSS never does :has() ancestor matching against Gmail's churning, deeply
+   nested chrome. That pattern (body div:has(region):not(:has(main))) forced a
+   full style recalc on every Gmail DOM mutation and was the main cause of the
+   input/scroll lag. Flat attribute selectors cost nothing to keep matched. */
+[data-gsd-col="side"]  { background-color: var(--gsd-side)  !important; }
+[data-gsd-col="rail"]  { background-color: var(--gsd-rail)  !important; }
+[data-gsd-col="panel"] { background-color: var(--gsd-panel) !important; }
+
+/* Side-panel region wrapper (covers the resize gutter / empty dock strip) */
+div[role="complementary"] {
+  background-color: var(--gsd-panel) !important;
+}
+
+/* --------------------------------------------------------------------------
+   0a-ii. TEXT & INTERACTION INSIDE FILLED COLUMNS
+   The fills above also capture the Chat/Meet roster column, where Gmail's
+   stock dark text and light hover/selected styles are unreadable on the
+   dark shade. Force light text, dark hover pills and accent selection on
+   everything inside a filled column, then re-assert Compose and the active
+   mail folder with the same column prefix so they keep their treatments.
+   (Light content is safe: fills exclude anything containing role="main".)
+   -------------------------------------------------------------------------- */
+
+/* These rules previously matched the filled columns with chained
+   :is(body div:has(.aBA)…, body div:has(.T-I.T-I-KE.L3))…:not(:has(main))
+   selectors; they are now scoped to the runtime tags (gmail-theme.js).
+   "rail" = far-left mini rail, "side" = left sidebar. */
+
+/* Base: dim light text everywhere in a filled column */
+:is([data-gsd-col="rail"], [data-gsd-col="side"]) * {
+  color: var(--gsd-edge-text-dim) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Hover: dark pill — never Gmail's light hover surface */
+:is([data-gsd-col="rail"], [data-gsd-col="side"])
+  :is([role="listitem"], [role="option"], [role="tab"], [role="treeitem"],
+      [role="button"], [role="link"], a, li, .TO):hover:not(.T-I-KE):not(.nZ):not([aria-selected="true"]):not([class*="VfPpkd"]) {
+  background-color: var(--gsd-edge-hover) !important;
+}
+
+/* Selected item (e.g. active chat room): accent-tinted pill + accent text */
+:is([data-gsd-col="rail"], [data-gsd-col="side"])
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]):not(.T-I-KE) {
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+}
+:is([data-gsd-col="rail"], [data-gsd-col="side"])
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) * {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+}
+
+/* Material buttons in filled columns (e.g. Chat "New chat") → Compose look */
+:is([data-gsd-col="rail"], [data-gsd-col="side"]) button[class*="VfPpkd"] {
+  background-color: var(--gsd-accent) !important;
+  background-image: none !important;
+}
+:is([data-gsd-col="rail"], [data-gsd-col="side"]) button[class*="VfPpkd"],
+:is([data-gsd-col="rail"], [data-gsd-col="side"]) button[class*="VfPpkd"] * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* Re-assert Compose (yellow, dark text) over the column-wide text rule */
+[data-gsd-col="side"] .T-I.T-I-KE.L3,
+[data-gsd-col="side"] .T-I.T-I-KE.L3 * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* Re-assert the active mail folder (Inbox) pill + text */
+[data-gsd-col="side"] .TO.nZ {
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+}
+[data-gsd-col="side"] .TO.nZ * {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+  font-weight: 600 !important;
+}
+[data-gsd-col="side"] .TO:hover * {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+/* Re-assert "Labels" header + rail unread badge over the column-wide rule */
+[data-gsd-col="side"] .aAv {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+[data-gsd-col="rail"] .Yh,
+[data-gsd-col="rail"] .Yh * {
+  background-color: var(--gsd-accent) !important;
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   0a-iii. RUNTIME-TAGGED DARK COLUMNS (see gmail-theme.js)
+   The Chat/Meet roster column is tagged [data-gsd-dark-column] at runtime
+   because its class names are unguessable. Full dark treatment: shade,
+   light text, dark hover, accent selection, Compose-style Material buttons.
+   -------------------------------------------------------------------------- */
+[data-gsd-dark-column] {
+  background-color: var(--gsd-side) !important;
+}
+[data-gsd-dark-column] * {
+  color: var(--gsd-edge-text-dim) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text-dim) !important;
+}
+/* Gmail paints section cards / row pills light — flatten them */
+[data-gsd-dark-column] div,
+[data-gsd-dark-column] span,
+[data-gsd-dark-column] ul,
+[data-gsd-dark-column] li {
+  background-color: transparent;
+}
+/* Row hover: dark pill */
+[data-gsd-dark-column]
+  :is([role="listitem"], [role="option"], [role="tab"], [role="treeitem"],
+      [role="button"], [role="link"], a, li, [data-group-id]):hover:not([class*="VfPpkd"]):not([aria-selected="true"]) {
+  background-color: var(--gsd-edge-hover) !important;
+  background-image: none !important;
+}
+/* Selected row: accent pill */
+[data-gsd-dark-column]
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) {
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+}
+[data-gsd-dark-column]
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) * {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+}
+/* Material buttons (e.g. "New chat"): Compose treatment */
+[data-gsd-dark-column] :is(button, [role="button"])[class*="VfPpkd"] {
+  background-color: var(--gsd-accent) !important;
+  background-image: none !important;
+}
+[data-gsd-dark-column] :is(button, [role="button"])[class*="VfPpkd"],
+[data-gsd-dark-column] :is(button, [role="button"])[class*="VfPpkd"] * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   0b. SQUARE CORNERS — Gmail's Material You rounds the content card and the
+      companion panels; the approved design is flat/square.
+   -------------------------------------------------------------------------- */
+div[role="main"],
+div[role="main"] > div,
+div[role="main"] .aia,
+div[role="main"] .NO,
+div[role="main"] .bkK,
+div[role="main"] .AO { /* VERIFY */
+  border-radius: 0 !important;
+}
+
+/* Companion side-panel host (Tasks / Calendar / Keep) — panel shade, square.
+   Do NOT set overflow:hidden on .brC or the icon strip — that clipped the
+   add-on icons. Restrict overflow to iframe panel hosts only. */
+.brC,
+[class*="brC-aT5"]:not([class*="aOt-Jw"]):not([class*="aOt-bsf"]),
+[class*="aT5-a3y"] {
+  background: var(--gsd-panel) !important;
+  border-radius: 0 !important;
+}
+div:has(> iframe[src*="tasks.google.com"]),
+div:has(> iframe[src*="calendar.google.com"]),
+div:has(> iframe[src*="keep.google.com"]) {
+  background: var(--gsd-panel) !important;
+  border-radius: 0 !important;
+  overflow: hidden !important;
+}
+iframe[src*="tasks.google.com"],
+iframe[src*="calendar.google.com"],
+iframe[src*="keep.google.com"] {
+  border-radius: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   1. TOP BAR  (#gb is Google's app bar — long-stable)
+   -------------------------------------------------------------------------- */
+#gb,
+header#gb,
+#gb > div {
+  background: var(--gsd-top) !important;
+}
+
+/* Search field: pill on dark */
+#gb form[role="search"],
+#gb [role="search"] { /* VERIFY: search pill wrapper */
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 19px !important;
+  box-shadow: none !important;
+}
+#gb form[role="search"]:hover,
+#gb [role="search"]:hover,
+#gb form[role="search"]:focus-within {
+  background: rgba(255, 255, 255, 0.13) !important;
+}
+#gb form[role="search"] input,
+#gb input[aria-label*="Search" i] {
+  color: var(--gsd-edge-text) !important;
+  background: transparent !important;
+}
+#gb form[role="search"] input::placeholder {
+  color: var(--gsd-edge-text-dim) !important;
+}
+#gb form[role="search"] svg,
+#gb form[role="search"] button {
+  color: var(--gsd-edge-text-dim) !important;
+  fill: var(--gsd-edge-text-dim) !important;
+}
+
+/* Top bar icons (burger, support, settings, apps). Avatar is an <img>
+   and is deliberately untouched. */
+#gb svg {
+  color: var(--gsd-edge-text-dim) !important;
+  fill: var(--gsd-edge-text-dim) !important;
+}
+#gb a[role="button"]:hover,
+#gb div[role="button"]:hover {
+  background: var(--gsd-edge-hover) !important;
+  border-radius: 50% !important;
+}
+#gb [aria-label*="Main menu" i] {
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Gmail logo lockup is an <img> with dark "Gmail" text — render it white
+   so it reads on the dark bar. */
+#gb img[src*="logo_gmail"],
+#gb a[title="Gmail"] img,
+#gb a[aria-label*="Gmail" i] img { /* VERIFY */
+  filter: brightness(0) invert(1) !important;
+}
+
+/* Chat "Active" status chip: white 8% pill */
+#gb [guidedhelpid="status_chip"],
+#gb div[role="button"][aria-label*="status" i] { /* VERIFY */
+  background: var(--gsd-edge-hover) !important;
+  color: var(--gsd-edge-text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. LEFT MINI RAIL (Mail / Chat / Meet) — darkest shade
+   -------------------------------------------------------------------------- */
+.aBA,
+.aAw,
+[data-gsd-col="rail"] { /* VERIFY */
+  background: var(--gsd-rail) !important;
+}
+.aBA [role="tab"],
+.aBA [role="link"],
+[data-gsd-col="rail"] [role="tab"] {
+  color: var(--gsd-edge-text-dim) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.aBA [role="tab"]:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+/* Active item (Mail): icon + label in accent — no white circle */
+.aBA [role="tab"][aria-selected="true"],
+.aBA [role="tab"][aria-current],
+.aBA .aAy,
+[data-gsd-col="rail"] [aria-selected="true"] {
+  color: var(--gsd-accent) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.aBA [role="tab"][aria-selected="true"] svg {
+  color: var(--gsd-accent) !important;
+  fill: var(--gsd-accent) !important;
+}
+/* Unread badge on the rail = yellow pill with dark text */
+.aBA .Yh,
+.aBA .XU,
+.aBA .aBB,
+[data-gsd-col="rail"] .Yh { /* VERIFY */
+  background: var(--gsd-accent) !important;
+  color: var(--gsd-on-accent) !important;
+}
+.aBA span,
+[data-gsd-col="rail"] span {
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. LEFT SIDEBAR (Compose, folders, labels) — --gsd-side shade
+   Containers churn; .TK (folder list), .byl/.wT (labels tree), .TO (nav row),
+   .aio (label name), .bsU (count) have been stable for years.
+   -------------------------------------------------------------------------- */
+.aeN,
+.aBf,
+.aR,
+.VP,
+.VK,
+.aic,
+.nM,
+[data-gsd-col="side"] { /* VERIFY: container candidates */
+  background: var(--gsd-side) !important;
+}
+/* Inner panes painted white by Gmail — let the shade show through */
+.aeN .TK, .aeN .n3, .aeN .ajl, .aeN .ajm,
+.nM .TK, .nM .n3,
+.byl, .wT, .yJ { /* VERIFY */
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* ---- Sidebar text: readable on dark ----
+   Broad: every element under the nav list / labels tree / container guesses.
+   Compose + active item are restored below (higher specificity). */
+.aeN *,
+.nM *,
+.aic *,
+.aBf *,
+.aR *,
+.VP *,
+.VK *,
+.TK *,
+.byl *,
+.wT *,
+[data-gsd-col="side"] * {
+  color: var(--gsd-edge-text-dim) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text-dim) !important;
+}
+
+/* ---- Roster interactions (Chat/Meet views live in these containers) ----
+   Same dark containers as above: dark hover pill instead of Gmail's light
+   hover, accent pill for the selected row, Compose look for Material
+   buttons like "New chat". */
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is([role="listitem"], [role="option"], [role="tab"], [role="treeitem"],
+      [role="button"], [role="link"], a, li):hover:not(.T-I-KE):not([class*="VfPpkd"]):not([aria-selected="true"]) {
+  background-color: var(--gsd-edge-hover) !important;
+  background-image: none !important;
+}
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]):not(.T-I-KE) {
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+}
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) *:not(.T-I-KE):not(.T-I-KE *) {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+}
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is(button, [role="button"])[class*="VfPpkd"] {
+  background-color: var(--gsd-accent) !important;
+  background-image: none !important;
+}
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is(button, [role="button"])[class*="VfPpkd"],
+:is(.aeN, .aBf, .aR, .VP, .VK, .aic, .nM)
+  :is(button, [role="button"])[class*="VfPpkd"] * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* Nav rows: hover pill */
+.TK .TO,
+.byl .TO,
+.aeN .TO,
+.nM .TO {
+  border-radius: 15px !important;
+}
+.TK .TO:hover,
+.byl .TO:hover,
+.aeN .TO:hover,
+.nM .TO:hover {
+  background: var(--gsd-edge-hover) !important;
+}
+.TK .TO:hover *,
+.byl .TO:hover *,
+.aeN .TO:hover *,
+.nM .TO:hover * {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+/* Nav icons: dark sprites need inverting; icon fonts get the dim color */
+.TK .qj, .byl .qj, .aeN .qj, .nM .qj { /* VERIFY: sprite icons */
+  filter: invert(0.75);
+}
+
+/* Active nav item (e.g. Inbox): yellow-tinted pill — kill Gmail's blue/white */
+.TK .TO.nZ,
+.byl .TO.nZ,
+.aeN .TO.nZ,
+.nM .TO.nZ,
+.TK .TO.aim,
+.TK .TO.nZ.aiq { /* VERIFY */
+  background: var(--gsd-accent-soft) !important;
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+.TK .TO.nZ *,
+.byl .TO.nZ *,
+.aeN .TO.nZ *,
+.nM .TO.nZ *,
+.TK .TO.aim * {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+  font-weight: 600 !important;
+}
+
+/* Unread counts: dim; active count handled by the rule above */
+.TK .bsU, .byl .bsU, .aeN .bsU, .nM .bsU {
+  color: var(--gsd-edge-text-dim) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text-dim) !important;
+}
+
+/* "Labels" section header + [+] — brighter than row text */
+.aeN .aAv, .nM .aAv, .aAv,
+.aeN .pM, .pM { /* VERIFY */
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+/* Compose button: solid yellow, dark text — overrides the broad * rules
+   above via higher specificity */
+.T-I.T-I-KE.L3 {
+  background: var(--gsd-accent) !important;
+  font-weight: 600 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+.T-I.T-I-KE.L3:hover {
+  filter: brightness(1.05);
+}
+.T-I.T-I-KE.L3,
+.T-I.T-I-KE.L3 * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+}
+.T-I.T-I-KE.L3 svg,
+.T-I.T-I-KE.L3 img {
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* Safety net: if any of the sidebar container classes ever appear inside the
+   light mail area, restore dark ink there. */
+div[role="main"] .TK *,
+div[role="main"] .nM *,
+div[role="main"] .byl *,
+div[role="main"] .wT *,
+div[role="main"] .aR *,
+div[role="main"] .VP *,
+div[role="main"] .VK *,
+div[role="main"] .aic *,
+div[role="main"] .aBf *,
+div[role="main"] .aeN * {
+  color: var(--gsd-ink) !important;
+  -webkit-text-fill-color: var(--gsd-ink) !important;
+}
+div[role="main"] .TK,
+div[role="main"] .nM,
+div[role="main"] .aic,
+div[role="main"] .aBf,
+div[role="main"] .aR,
+div[role="main"] .VP,
+div[role="main"] .VK {
+  background: transparent !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. MAIL LIST AREA — STAYS LIGHT (the whole point)
+   -------------------------------------------------------------------------- */
+div[role="main"] {
+  background: var(--gsd-content) !important;
+}
+div[role="main"] .Bs,
+div[role="main"] .nH,
+div[role="main"] .aia,
+div[role="main"] .UI {
+  background: var(--gsd-content) !important;
+}
+
+/* List toolbar (select-all / refresh / more) */
+.aeH,
+.G-atb { /* VERIFY */
+  background: var(--gsd-content) !important;
+  border-bottom: 1px solid var(--gsd-hairline) !important;
+}
+.G-atb .T-I,
+.aeH .T-I {
+  color: var(--gsd-ink-2) !important;
+}
+
+/* Column / section header strips ("Inbox · 1–50 of 318", "Today",
+   "Tomorrow", "This week") — DARK strips. */
+.Wg,
+.ae4 .Wv,
+.ae4 .Wf { /* VERIFY */
+  background: var(--gsd-top) !important;
+  color: var(--gsd-edge-text) !important;
+}
+.Wg .Dj,
+.ae4 .Wv .Dj {
+  color: var(--gsd-edge-text-dim) !important;
+}
+.Wg span, .ae4 .Wv span {
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Divider between inbox columns (multiple-inboxes side-by-side view) */
+.ae4 + .ae4 { /* VERIFY */
+  border-left: 1px solid var(--gsd-col-divider) !important;
+}
+
+/* ---- Rows ---- */
+tr.zA {
+  background: var(--gsd-row) !important;
+  border-bottom: 1px solid var(--gsd-hairline) !important;
+}
+/* Zebra striping (level 4/10). Gmail re-renders rows while scrolling so the
+   striping may momentarily shuffle — accepted for v1. */
+tr.zA:nth-child(even) {
+  background: linear-gradient(var(--gsd-zebra), var(--gsd-zebra)),
+              var(--gsd-row) !important;
+}
+tr.zA:hover {
+  box-shadow: inset 0 0 0 100vmax var(--gsd-row-hover) !important;
+}
+
+/* Unread: pure white bg + 3px accent left bar + bold */
+tr.zA.zE {
+  background: var(--gsd-unread-bg) !important;
+  box-shadow: inset 3px 0 0 var(--gsd-accent) !important;
+}
+tr.zA.zE:hover {
+  box-shadow: inset 3px 0 0 var(--gsd-accent),
+              inset 0 0 0 100vmax var(--gsd-row-hover) !important;
+}
+tr.zA.zE .yW,
+tr.zA.zE .yW span,
+tr.zA.zE .bog,
+tr.zA.zE .xW span {
+  font-weight: 700 !important;
+  color: var(--gsd-ink) !important;
+}
+
+/* Selected / focused row: warm tint + same accent bar */
+tr.zA.x7,
+tr.zA.aps,
+tr.zA.btb { /* VERIFY */
+  background: var(--gsd-sel-bg) !important;
+  box-shadow: inset 3px 0 0 var(--gsd-accent) !important;
+}
+
+/* Primary + secondary text */
+tr.zA .yW, tr.zA .bog {
+  color: var(--gsd-ink) !important;
+}
+tr.zA .y2,
+tr.zA .xW span {
+  color: var(--gsd-ink-2) !important;
+}
+
+/* Label chips on rows (CAIRN / TODAY etc.) — neutral, not colorful */
+tr.zA .ar .at { /* VERIFY */
+  background: rgba(31, 41, 51, 0.08) !important;
+  border: none !important;
+  border-radius: 4px !important;
+}
+tr.zA .ar .at .av {
+  color: var(--gsd-ink-2) !important;
+}
+
+/* Attachment chips */
+tr.zA .brd, .brc { /* VERIFY */
+  background: #ffffff !important;
+  border: 1px solid rgba(31, 41, 51, 0.15) !important;
+  border-radius: 12px !important;
+  color: var(--gsd-ink-2) !important;
+}
+
+/* Stars + importance markers — unify filled state on the accent */
+tr.zA .T-KT.T-KT-Jp,
+tr.zA .T-KT.T-KT-Jp::before {
+  filter: none !important;
+}
+tr.zA .T-KT-Jp svg,
+tr.zA .pG svg { /* VERIFY */
+  color: var(--gsd-accent) !important;
+  fill: var(--gsd-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. READING PANE / OPENED CONVERSATION — ALWAYS LIGHT (README §5.7)
+   Force white on every known message wrapper so no dark chrome rule can
+   leak in. Message text/links keep Gmail's stock styling on white.
+   -------------------------------------------------------------------------- */
+div[role="main"] .Bk,
+div[role="main"] .G3,
+div[role="main"] .gs,
+div[role="main"] .gE,
+div[role="main"] .gA,
+div[role="main"] .adn,
+div[role="main"] .ads,
+div[role="main"] .ii,
+div[role="main"] .a3s,
+div[role="main"] .adP,
+div[role="main"] .adO,
+div[role="main"] .h7,
+div[role="main"] .kv,
+div[role="main"] .iY,
+div[role="main"] .nr,
+div[role="main"] .hx { /* VERIFY: conversation wrappers */
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+/* Subject line + message header text: dark ink */
+div[role="main"] .hP, /* subject */
+div[role="main"] .gD, /* sender name */
+div[role="main"] .gE .g2,
+div[role="main"] .qu {
+  color: var(--gsd-ink) !important;
+  -webkit-text-fill-color: var(--gsd-ink) !important;
+}
+div[role="main"] .go,
+div[role="main"] .g3 { /* recipient line, date */
+  color: var(--gsd-ink-2) !important;
+  -webkit-text-fill-color: var(--gsd-ink-2) !important;
+}
+
+/* Message body text: default dark on white */
+div[role="main"] .a3s {
+  color: var(--gsd-ink) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. FAR-RIGHT ADD-ON RAIL — runtime-tagged (see gmail-theme.js) + class
+      fallback. Invert icon sprites to light gray on --gsd-rail. Avoid blanket
+      `* { color }` here — Gmail icons use sprite divs / masks that break when
+      every descendant is forced to a text color.
+   -------------------------------------------------------------------------- */
+[data-gsd-addon-rail],
+.brC-aT5-aOt-Jw,
+.brC-aT5-aOt-Jw .brC-aT5-aOt-bsf-Jw {
+  background: var(--gsd-rail) !important;
+  overflow: visible !important;
+}
+
+/* <img> sprites and Gmail's usual inner icon div */
+[data-gsd-addon-rail] img,
+.brC-aT5-aOt-Jw img,
+[data-gsd-addon-rail] [role="button"] img,
+[data-gsd-addon-rail] [role="tab"] img,
+.brC-aT5-aOt-Jw [role="button"] > div,
+.brC-aT5-aOt-Jw [role="tab"] > div,
+[data-gsd-addon-rail] [role="button"] > div,
+[data-gsd-addon-rail] [role="tab"] > div {
+  filter: brightness(0) invert(0.88) !important;
+  opacity: 1 !important;
+}
+
+[data-gsd-addon-rail] svg,
+.brC-aT5-aOt-Jw svg {
+  color: var(--gsd-edge-text) !important;
+  fill: var(--gsd-edge-text) !important;
+}
+
+/* Text labels / badges only */
+[data-gsd-addon-rail] :is(span, [role="status"]),
+.brC-aT5-aOt-Jw :is(span, [role="status"]) {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+[data-gsd-addon-rail] :is([role="button"], [role="tab"], [role="link"]):hover,
+.brC-aT5-aOt-Jw :is([role="button"], [role="tab"], [role="link"]):hover {
+  background: var(--gsd-edge-hover) !important;
+  border-radius: 8px;
+}
+
+[data-gsd-addon-rail] :is([role="tab"][aria-selected="true"], [aria-pressed="true"], [aria-current="page"]),
+.brC-aT5-aOt-Jw :is([role="tab"][aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) {
+  background: var(--gsd-accent-soft) !important;
+}
+
+[data-gsd-addon-rail] :is([role="tab"][aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) :is(img, div),
+.brC-aT5-aOt-Jw :is([role="tab"][aria-selected="true"], [aria-pressed="true"], [aria-current="page"]) :is(img, div) {
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+}
+
+[data-gsd-addon-rail] [class*="badge"],
+[data-gsd-addon-rail] [role="status"],
+.brC-aT5-aOt-Jw [class*="badge"],
+.brC-aT5-aOt-Jw [role="status"] { /* VERIFY */
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+  filter: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. SCROLLBARS — dark thumbs on dark surfaces, light on light
+   -------------------------------------------------------------------------- */
+div[role="main"] ::-webkit-scrollbar-thumb {
+  background: rgba(120, 128, 138, 0.4) !important;
+  border-radius: 5px;
+}
+.aeN ::-webkit-scrollbar-thumb,
+.nM ::-webkit-scrollbar-thumb,
+[data-gsd-col="side"] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 5px;
+}
+
+/* --------------------------------------------------------------------------
+   8. FOCUS RINGS — accent
+   -------------------------------------------------------------------------- */
+.TK .TO:focus-visible,
+.aeN .TO:focus-visible,
+tr.zA:focus-visible {
+  outline: 2px solid var(--gsd-accent) !important;
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------------------
+   NEVER touch: avatars, contact photos, inline images, attachment previews.
+   Compose popup, dropdowns and tooltips stay light/stock by design
+   (README §5.7 / §9).
+   -------------------------------------------------------------------------- */

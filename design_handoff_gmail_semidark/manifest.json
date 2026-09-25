@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Gmail Semi-Dark",
+  "version": "0.1.0",
+  "description": "Outlook-classic semi-dark theme for Gmail: dark edges, light mail.",
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "css": ["theme.css"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://tasks.google.com/*"],
+      "css": ["tasks-panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ]
+}

@@ -1,12 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "Nathanael's Developer Tool",
-  "description": "A set of tools to help a developer be more productive.",
-  "version": "0.2.0",
-  "action": {
-    "default_title": "Nathanael's Developer Tool"
+  "name": "Cadence Tab",
+  "description": "Your developer dashboard — Cadence time tracking, GitHub tasks, bookmarks, and quick links in every new tab.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
-  "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms"],
+  "action": {
+    "default_title": "Cadence Tab",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "permissions": ["tabs", "windows", "bookmarks", "storage", "alarms", "scripting", "activeTab", "history", "favicon"],
   "host_permissions": ["https://api.github.com/*", "https://withcadence.online/*"],
   "background": {
     "service_worker": "background.js"
@@ -15,12 +27,54 @@
     "newtab": "src/newtab.html"
   },
   "options_page": "src/options.html",
+  "commands": {
+    "open-command-palette": {
+      "suggested_key": { "default": "Ctrl+Shift+P", "mac": "Command+Shift+P" },
+      "description": "Open the command palette"
+    }
+  },
+  "web_accessible_resources": [
+    { "resources": ["src/palette.html"], "matches": ["<all_urls>"] }
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["https://github.com/*"],
       "js": ["src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "css": ["src/gmail-theme.css"],
+      "js": ["src/gmail-theme.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://meet.google.com/*"],
+      "css": ["src/gmail-meet-sidebar.css"],
+      "js": ["src/gmail-meet-sidebar.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://chat.google.com/*", "https://mail.google.com/chat/*"],
+      "css": ["src/gmail-chat-roster.css"],
+      "js": ["src/gmail-chat-roster.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://tasks.google.com/*"],
+      "css": ["src/gmail-tasks-panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["src/gmail-companion-frame.js"],
+      "css": ["src/gmail-calendar-panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ]
 }

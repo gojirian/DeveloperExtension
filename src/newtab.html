@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GitHub PR Tab Pinner</title>
+    <title>Cadence Tab</title>
     <style>
       :root {
         color-scheme: dark light;
@@ -84,7 +84,7 @@
         line-height: 1.25rem;
       }
       .text-sky-300 {
-        color: #7dd3fc;
+        color: #22d3ee;
       }
       .w-full {
         width: 100%;
@@ -114,21 +114,21 @@
       }
       .search-input:focus {
         outline: none;
-        border-color: rgba(125, 211, 252, 0.8);
+        border-color: rgba(34, 211, 238, 0.8);
         background-color: rgba(15, 23, 42, 0.6);
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.25);
+        box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.25);
       }
       .pill-button {
         padding: 0.85rem 1.6rem;
         border-radius: 999px;
         border: none;
-        background: linear-gradient(135deg, #2563eb, #38bdf8);
+        background: linear-gradient(135deg, #6366f1, #22d3ee);
         color: #ffffff;
         font-size: 1rem;
         font-weight: 600;
         cursor: pointer;
         transition: transform 120ms ease, box-shadow 120ms ease;
-        box-shadow: 0 12px 30px rgba(37, 99, 235, 0.28);
+        box-shadow: 0 12px 30px rgba(99, 102, 241, 0.28);
       }
       .pill-button.secondary {
         background: rgba(148, 163, 184, 0.2);
@@ -155,7 +155,7 @@
         gap: 0.6rem;
       }
       .dashboard-link {
-        color: #7dd3fc;
+        color: #22d3ee;
         text-decoration: none;
       }
       .dashboard-link:hover {
@@ -197,7 +197,7 @@
         font-size: 0.95rem;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(125, 211, 252, 0.9);
+        color: rgba(34, 211, 238, 0.9);
       }
       .bookmark-tree {
         flex: 1;
@@ -231,7 +231,7 @@
         transition: background-color 120ms ease, color 120ms ease;
       }
       .bookmark-link:hover {
-        background: rgba(125, 211, 252, 0.14);
+        background: rgba(34, 211, 238, 0.14);
         color: #ffffff;
       }
       .bookmark-folder {
@@ -247,7 +247,7 @@
         transition: background-color 120ms ease, color 120ms ease;
       }
       .bookmark-folder summary:hover {
-        background: rgba(125, 211, 252, 0.14);
+        background: rgba(34, 211, 238, 0.14);
         color: #ffffff;
       }
       .bookmark-folder[open] > summary {
@@ -291,14 +291,14 @@
         font-weight: 650;
         letter-spacing: 0.06em;
         text-transform: uppercase;
-        color: rgba(125, 211, 252, 0.9);
+        color: rgba(34, 211, 238, 0.9);
         padding-bottom: 0.35rem;
-        border-bottom: 1px solid rgba(125, 211, 252, 0.2);
+        border-bottom: 1px solid rgba(34, 211, 238, 0.2);
       }
       .link-button {
         background: transparent;
         border: none;
-        color: #7dd3fc;
+        color: #22d3ee;
         cursor: pointer;
         font-size: 0.95rem;
         font-weight: 600;
@@ -326,7 +326,7 @@
       }
       .app-card:hover {
         transform: translateY(-2px);
-        border-color: rgba(125, 211, 252, 0.65);
+        border-color: rgba(34, 211, 238, 0.65);
         background: rgba(30, 41, 59, 0.55);
       }
       .app-name {
@@ -367,7 +367,7 @@
         font-size: 0.95rem;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(125, 211, 252, 0.9);
+        color: rgba(34, 211, 238, 0.9);
       }
       .github-tasks-meta {
         display: flex;
@@ -423,7 +423,7 @@
         transition: border-color 120ms ease, background-color 120ms ease;
       }
       .github-task-card:hover {
-        border-color: rgba(125, 211, 252, 0.5);
+        border-color: rgba(34, 211, 238, 0.5);
         background: rgba(30, 41, 59, 0.5);
       }
       .github-task-title {
@@ -478,7 +478,7 @@
       }
       .github-task-unread {
         font-size: 0.75rem;
-        color: #38bdf8;
+        color: #22d3ee;
         font-weight: 600;
         white-space: nowrap;
       }
@@ -520,7 +520,7 @@
         font-size: 0.95rem;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(125, 211, 252, 0.9);
+        color: rgba(34, 211, 238, 0.9);
       }
       .cadence-tasks-meta {
         display: flex;
@@ -536,6 +536,28 @@
         font-size: 0.75rem;
         color: rgba(148, 163, 184, 0.5);
       }
+      .cadence-tasks-filter {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.8rem;
+        color: #f1f5f9;
+        background: rgba(15, 23, 42, 0.45);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        border-radius: 8px;
+        outline: none;
+        transition: border-color 120ms ease, background-color 120ms ease;
+      }
+      .cadence-tasks-filter::placeholder {
+        color: rgba(148, 163, 184, 0.5);
+      }
+      .cadence-tasks-filter:focus {
+        border-color: rgba(34, 211, 238, 0.6);
+        background: rgba(30, 41, 59, 0.6);
+      }
+      .cadence-tasks-filter[hidden] {
+        display: none;
+      }
       .cadence-tasks-list {
         display: flex;
         flex-direction: column;
@@ -543,6 +565,23 @@
         flex: 1;
         overflow-y: auto;
         padding-right: 0.25rem;
+      }
+      .cadence-task-card.pinned {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: rgba(20, 35, 30, 0.92);
+        border-color: rgba(74, 222, 128, 0.4);
+      }
+      .cadence-task-pin {
+        font-size: 0.65rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #4ade80;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
       }
       .cadence-task-card {
         display: flex;
@@ -571,6 +610,12 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        text-decoration: none;
+        transition: color 120ms ease;
+      }
+      a.cadence-task-title:hover {
+        color: #22d3ee;
+        text-decoration: underline;
       }
       .cadence-task-key {
         font-size: 0.75rem;
@@ -747,7 +792,7 @@
         font-size: 0.95rem;
         letter-spacing: 0.16em;
         text-transform: uppercase;
-        color: rgba(125, 211, 252, 0.9);
+        color: rgba(34, 211, 238, 0.9);
       }
       .notif-list {
         display: flex;
@@ -770,11 +815,11 @@
         transition: border-color 120ms ease, background-color 120ms ease;
       }
       .notif-card:hover {
-        border-color: rgba(125, 211, 252, 0.5);
+        border-color: rgba(34, 211, 238, 0.5);
         background: rgba(30, 41, 59, 0.5);
       }
       .notif-card.unread {
-        border-left: 3px solid #38bdf8;
+        border-left: 3px solid #22d3ee;
       }
       .notif-subject {
         font-weight: 600;
@@ -785,6 +830,11 @@
         -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
         overflow: hidden;
+        text-decoration: none;
+        flex: 1;
+      }
+      .notif-subject:hover {
+        color: #22d3ee;
       }
       .notif-meta {
         display: flex;
@@ -795,7 +845,7 @@
         color: rgba(148, 163, 184, 0.6);
       }
       .notif-author {
-        color: rgba(125, 211, 252, 0.85);
+        color: rgba(34, 211, 238, 0.85);
         font-weight: 600;
       }
       .notif-reason {
@@ -821,6 +871,36 @@
         font-size: 0.7rem;
         color: rgba(148, 163, 184, 0.5);
       }
+      .notif-done-btn {
+        background: transparent;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        color: rgba(148, 163, 184, 0.7);
+        cursor: pointer;
+        font-size: 0.65rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        padding: 0.15rem 0.5rem;
+        border-radius: 4px;
+        margin-left: auto;
+        align-self: flex-start;
+        transition: color 120ms ease, border-color 120ms ease, background 120ms ease;
+        flex-shrink: 0;
+      }
+      .notif-done-btn:hover {
+        color: #22d3ee;
+        border-color: rgba(34, 211, 238, 0.5);
+        background: rgba(34, 211, 238, 0.1);
+      }
+      .notif-done-btn:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .notif-top-row {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.4rem;
+      }
       .modal {
         position: fixed;
         inset: 0;
@@ -844,7 +924,7 @@
         z-index: 1001;
         width: min(520px, 95vw);
         background: rgba(15, 23, 42, 0.92);
-        border: 1px solid rgba(125, 211, 252, 0.2);
+        border: 1px solid rgba(34, 211, 238, 0.2);
         border-radius: 18px;
         padding: 24px 26px;
         display: flex;
@@ -884,7 +964,7 @@
         transition: border-color 120ms ease, background-color 120ms ease;
       }
       .modal-tab-button:hover {
-        border-color: rgba(125, 211, 252, 0.65);
+        border-color: rgba(34, 211, 238, 0.65);
         background: rgba(30, 41, 59, 0.8);
       }
       .modal-tab-title {
@@ -933,8 +1013,8 @@
       }
       .worklog-input:focus {
         outline: none;
-        border-color: rgba(125, 211, 252, 0.6);
-        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+        border-color: rgba(34, 211, 238, 0.6);
+        box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.15);
       }
       .worklog-hint {
         font-size: 0.8rem;
@@ -1036,6 +1116,7 @@
           <button id="cadence-tasks-refresh" class="refresh-btn" type="button" title="Refresh">&#x21bb;</button>
         </div>
         <div id="cadence-active-timer" class="cadence-active-timer" hidden></div>
+        <input id="cadence-tasks-filter" class="cadence-tasks-filter" type="search" placeholder="Filter tasks…" spellcheck="false" autocomplete="off" hidden />
         <div id="cadence-tasks-list" class="cadence-tasks-list">
           <p class="muted">Loading tasks...</p>
         </div>
@@ -1046,8 +1127,11 @@
       </aside>
       <div class="content-wrapper">
         <main class="shadow-xl rounded-3xl bg-white/10 backdrop-blur px-12 py-16 flex flex-col items-center gap-8 w-full max-w-2xl">
-          <span class="uppercase tracking-widest text-sm text-sky-300">GitHub PR helper</span>
-          <h1 class="text-6xl font-bold tracking-tight">Welcome</h1>
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <span class="uppercase tracking-widest text-sm text-sky-300">Cadence Tab</span>
+            <button id="refresh-all" class="refresh-btn" type="button" title="Refresh all data">&#x21bb;</button>
+          </div>
+          <h1 id="welcome-heading" class="text-6xl font-bold tracking-tight">Welcome</h1>
           <form id="search-form" class="search-form" autocomplete="off">
             <input
               id="search-query"
@@ -1077,6 +1161,7 @@
         <div class="github-tasks-meta">
           <span id="notif-count" class="github-tasks-count"></span>
           <span id="notif-updated" class="github-tasks-updated"></span>
+          <button id="notif-refresh" class="refresh-btn" type="button" title="Refresh">&#x21bb;</button>
         </div>
         <div id="notif-list" class="notif-list">
           <p class="muted">Loading notifications...</p>
@@ -1131,6 +1216,7 @@
     </div>
     <script src="github-tasks.js"></script>
     <script src="cadence-tasks.js"></script>
+    <script src="palette-overlay.js"></script>
     <script src="newtab.js"></script>
   </body>
 </html>

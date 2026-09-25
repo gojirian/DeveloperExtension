@@ -1,0 +1,161 @@
+/* ==========================================================================
+   Gmail Semi-Dark — Google Chat roster (menu) frame
+   (https://chat.google.com/* and https://mail.google.com/chat/*)
+
+   The Chat menu inside Gmail is a cross-origin iframe, so CSS injected into
+   mail.google.com cannot reach it. This sheet is injected into the chat
+   frames with all_frames: true. gmail-chat-roster.js tags the document with
+   <html data-gsd-chat-roster> only when it is the roster/menu frame, so
+   conversation frames and the standalone Chat app are never touched.
+
+   Strategy mirrors gmail-tasks-panel.css: Chat's class names are obfuscated
+   and churn, so paint the frame in the sidebar shade, flatten Chat's light
+   surfaces to transparent, force all text light, then layer hover /
+   selection / accent treatments back on top. Tokens match gmail-theme.css
+   (user-approved, see design_handoff_gmail_semidark/README.md).
+   ========================================================================== */
+
+html[data-gsd-chat-roster] {
+  color-scheme: only dark;
+
+  --gsd-side:          #1f2933; /* matches the Gmail left sidebar shade */
+  --gsd-raised:        #2b3642; /* menus, dialogs, tooltips */
+  --gsd-accent:        #ffc700;
+  --gsd-accent-soft:   rgba(255, 199, 0, 0.16);
+  --gsd-accent-text:   #ffd84d;
+  --gsd-on-accent:     #20242a;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-edge-hover:    rgba(255, 255, 255, 0.08);
+}
+
+html[data-gsd-chat-roster],
+html[data-gsd-chat-roster] body {
+  background: var(--gsd-side) !important;
+}
+
+/* --------------------------------------------------------------------------
+   FLATTEN — Chat paints section cards, pills and rows in light surfaces
+   that are unreadable against the dark column. Make them transparent so the
+   sidebar shade shows through. Exclusions:
+   - [aria-selected] / [aria-current] rows keep their background so the
+     selected rules below win without a specificity arms race (the hover
+     rules below already out-rank this rule on specificity);
+   - floating surfaces ([role=menu|dialog|listbox|tooltip]) are re-surfaced
+     as raised dark panels further down.
+   -------------------------------------------------------------------------- */
+html[data-gsd-chat-roster] body
+  :is(div, span, ul, ol, li, nav, section, header, a):not([aria-selected="true"]):not([aria-current]):not(
+    [role="menu"] *, [role="dialog"] *, [role="listbox"] *, [role="tooltip"] *) {
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Force ALL text light-dim; brighter/accent colors re-applied below */
+html[data-gsd-chat-roster] body * {
+  color: var(--gsd-edge-text-dim) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Icons */
+html[data-gsd-chat-roster] body svg {
+  color: var(--gsd-edge-text-dim) !important;
+  fill: var(--gsd-edge-text-dim) !important;
+}
+
+/* Section headers (Shortcuts / Spaces / Direct messages / Clients) and
+   unread (bold) row names: brighter than the dim base */
+html[data-gsd-chat-roster] :is(h1, h2, h3, [role="heading"]),
+html[data-gsd-chat-roster] :is(h1, h2, h3, [role="heading"]) *,
+html[data-gsd-chat-roster] body b,
+html[data-gsd-chat-roster] body strong {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+/* --------------------------------------------------------------------------
+   ROWS — hover: dark pill (replaces Chat's light hover surface);
+          selected: accent-tinted pill + accent text, like the mail sidebar.
+   -------------------------------------------------------------------------- */
+html[data-gsd-chat-roster] body
+  :is([role="listitem"], [role="option"], [role="tab"], [role="treeitem"],
+      [role="button"], [role="link"], a, li, [data-group-id]):hover:not([class*="VfPpkd"]):not([aria-selected="true"]) {
+  background-color: var(--gsd-edge-hover) !important;
+  background-image: none !important;
+}
+html[data-gsd-chat-roster] body
+  :is([role="listitem"], [role="option"], [role="tab"], [role="treeitem"],
+      [role="link"], a, li, [data-group-id]):hover:not([class*="VfPpkd"]) *:not([class*="VfPpkd"]):not([class*="VfPpkd"] *) {
+  color: var(--gsd-edge-text) !important;
+  -webkit-text-fill-color: var(--gsd-edge-text) !important;
+}
+
+html[data-gsd-chat-roster] body
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) {
+  background-color: var(--gsd-accent-soft) !important;
+  background-image: none !important;
+}
+html[data-gsd-chat-roster] body
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) * {
+  color: var(--gsd-accent-text) !important;
+  -webkit-text-fill-color: var(--gsd-accent-text) !important;
+}
+html[data-gsd-chat-roster] body
+  :is([aria-selected="true"], [aria-current="page"], [aria-current="true"]) svg {
+  color: var(--gsd-accent-text) !important;
+  fill: var(--gsd-accent-text) !important;
+}
+
+/* Unread count badges: accent pill with dark text */
+html[data-gsd-chat-roster] body [aria-label*="unread" i]:not(:has(*)),
+html[data-gsd-chat-roster] body [data-group-id] [role="status"] { /* VERIFY */
+  background-color: var(--gsd-accent) !important;
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   "NEW CHAT" — Material button gets the Compose treatment (solid accent)
+   -------------------------------------------------------------------------- */
+html[data-gsd-chat-roster] :is(button, [role="button"])[class*="VfPpkd"] {
+  background-color: var(--gsd-accent) !important;
+  background-image: none !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+html[data-gsd-chat-roster] :is(button, [role="button"])[class*="VfPpkd"],
+html[data-gsd-chat-roster] :is(button, [role="button"])[class*="VfPpkd"] * {
+  color: var(--gsd-on-accent) !important;
+  -webkit-text-fill-color: var(--gsd-on-accent) !important;
+  fill: var(--gsd-on-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   FLOATING SURFACES — menus / dialogs / tooltips: raised dark panel
+   -------------------------------------------------------------------------- */
+html[data-gsd-chat-roster] :is([role="menu"], [role="dialog"], [role="listbox"], [role="tooltip"]) {
+  background: var(--gsd-raised) !important;
+  color: var(--gsd-edge-text) !important;
+}
+html[data-gsd-chat-roster] :is([role="menu"], [role="dialog"], [role="listbox"]) :is([role="menuitem"], [role="option"]):hover {
+  background-color: var(--gsd-edge-hover) !important;
+}
+
+/* Search / filter inputs ("Find a chat") */
+html[data-gsd-chat-roster] :is(input, textarea) {
+  background: rgba(255, 255, 255, 0.09) !important;
+  color: var(--gsd-edge-text) !important;
+  caret-color: var(--gsd-accent);
+}
+html[data-gsd-chat-roster] :is(input, textarea)::placeholder {
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Scrollbar on the dark column */
+html[data-gsd-chat-roster] ::-webkit-scrollbar { width: 10px; }
+html[data-gsd-chat-roster] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 5px;
+}
+
+/* NEVER touch: avatars / contact photos (img elements are left alone). */

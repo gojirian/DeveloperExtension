@@ -4,6 +4,7 @@ dist/
 *.crx
 *.xpi
 actionlint
+icons/*.png
 
 # Temporary files
 *.pem

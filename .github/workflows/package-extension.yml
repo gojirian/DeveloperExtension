@@ -29,6 +29,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build extension
         run: node build.js
 
@@ -44,6 +47,8 @@ jobs:
   package:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.manifest.outputs.version }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,6 +57,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build extension
         run: node build.js
@@ -81,3 +89,65 @@ jobs:
           files: |
             dist/chrome-edge-extension-v${{ steps.manifest.outputs.version }}.zip
             dist/firefox-addon-v${{ steps.manifest.outputs.version }}.zip
+
+  # ── Store Publishing (release only) ──────────────────────────────────
+
+  publish-chrome:
+    needs: package
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build-${{ needs.package.outputs.version }}
+          path: dist
+
+      - name: Publish to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v5.0.0
+        with:
+          file-path: dist/chrome-edge-extension-v${{ needs.package.outputs.version }}.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
+
+  publish-edge:
+    needs: package
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build-${{ needs.package.outputs.version }}
+          path: dist
+
+      - name: Publish to Edge Add-ons
+        uses: wdzeng/edge-addon@v2
+        with:
+          product-id: ${{ secrets.EDGE_PRODUCT_ID }}
+          zip-path: dist/chrome-edge-extension-v${{ needs.package.outputs.version }}.zip
+          client-id: ${{ secrets.EDGE_CLIENT_ID }}
+          client-secret: ${{ secrets.EDGE_CLIENT_SECRET }}
+          access-token-url: ${{ secrets.EDGE_ACCESS_TOKEN_URL }}
+
+  publish-firefox:
+    needs: package
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build-${{ needs.package.outputs.version }}
+          path: dist
+
+      - name: Publish to Firefox AMO
+        uses: browser-actions/release-firefox-addon@v0.1.3
+        with:
+          addon-id: cadence-tab@withcadence.online
+          addon-path: dist/firefox-addon-v${{ needs.package.outputs.version }}.zip
+          auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
+          auth-api-secret: ${{ secrets.AMO_API_SECRET }}

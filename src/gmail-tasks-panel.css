@@ -1,0 +1,126 @@
+/* ==========================================================================
+   Gmail Semi-Dark — Tasks side panel (https://tasks.google.com/*)
+   The Tasks panel inside Gmail is a cross-origin iframe, so CSS injected
+   into mail.google.com cannot reach it. This sheet is injected into
+   tasks.google.com with all_frames: true. Spec: handoff README §5.5.
+
+   Strategy: Tasks' class names are obfuscated and churn, so the theme is
+   applied broadly — dark surface, all backgrounds flattened to transparent,
+   all text forced light — then accent/link/secondary colors are layered
+   back on top with more specific selectors.
+   ========================================================================== */
+
+:root {
+  color-scheme: only dark;
+  --gsd-panel:         #232e39;
+  --gsd-panel-raised:  #2b3642; /* menus, dialogs */
+  --gsd-accent:        #ffc700;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-link-dark:     #7eb8ff;
+  --gsd-divider:       rgba(255, 255, 255, 0.07);
+}
+
+html, body {
+  background: var(--gsd-panel) !important;
+  color: var(--gsd-edge-text) !important;
+  border-radius: 0 !important;
+}
+
+/* Square top — Gmail's companion host applies a large top-left radius */
+html, body, body > div {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Flatten Tasks' light surfaces so the panel shade shows through.
+   Menus/dialogs are excluded and re-surfaced below. */
+body div:not([role="menu"]):not([role="dialog"]):not([role="listbox"]) {
+  background-color: transparent !important;
+}
+
+/* Force ALL text light; specific colors re-applied below */
+body * {
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Floating menus / dialogs get a raised dark surface */
+[role="menu"],
+[role="dialog"],
+[role="listbox"] {
+  background: var(--gsd-panel-raised) !important;
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Icons */
+body svg {
+  color: var(--gsd-edge-text-dim) !important;
+  fill: var(--gsd-edge-text-dim) !important;
+}
+
+/* Headings / "My Tasks" list switcher */
+h1, h2,
+[role="heading"],
+[role="heading"] * {
+  color: var(--gsd-edge-text) !important;
+}
+
+/* "Add a task" affordance: accent, weight 600 */
+[role="button"][aria-label*="Add a task" i],
+button[aria-label*="Add a task" i],
+[role="button"][aria-label*="Add a task" i] * { /* VERIFY */
+  color: var(--gsd-accent) !important;
+  font-weight: 600 !important;
+}
+[role="button"][aria-label*="Add a task" i] svg {
+  color: var(--gsd-accent) !important;
+  fill: var(--gsd-accent) !important;
+}
+
+/* Task rows: hairline dividers */
+[role="listitem"] {
+  border-color: var(--gsd-divider) !important;
+}
+
+/* Links inside tasks */
+body a,
+body a * {
+  color: var(--gsd-link-dark) !important;
+}
+
+/* Due-date chips ("Yesterday"): outlined pill in accent */
+[aria-label*="due" i],
+[aria-label*="due" i] *,
+.due-chip { /* VERIFY */
+  color: var(--gsd-accent) !important;
+  border-color: var(--gsd-accent) !important;
+  background: transparent !important;
+}
+
+/* Completion circles: light ring at ~45% */
+[role="checkbox"] {
+  border-color: rgba(214, 218, 224, 0.45) !important;
+  background: transparent !important;
+}
+[role="checkbox"] svg {
+  color: rgba(214, 218, 224, 0.45) !important;
+  fill: rgba(214, 218, 224, 0.45) !important;
+}
+
+/* Text inputs (new task / edit task) */
+input, textarea {
+  background: transparent !important;
+  color: var(--gsd-edge-text) !important;
+  caret-color: var(--gsd-accent);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Scrollbar on the dark panel */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 5px;
+}
