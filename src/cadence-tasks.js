@@ -161,9 +161,11 @@ function isFeaturesCacheFresh(cache) {
 
 async function refreshAndCacheFeatures() {
   const cfg = await getCadenceConfig();
-  if (!cfg.token) return { features: [], lastFetched: 0 };
+  if (!cfg.token) return { features: [], firstName: '', lastFetched: 0 };
   const me = await fetchCadenceMe(cfg.token);
-  const data = { features: me.features || [], lastFetched: Date.now() };
+  const fullName = me.name || me.first_name || '';
+  const firstName = fullName.split(' ')[0] || '';
+  const data = { features: me.features || [], firstName, lastFetched: Date.now() };
   await storageSet({ [STORAGE_CADENCE_FEATURES]: data });
   return data;
 }
@@ -182,6 +184,10 @@ async function getFeatures() {
 function hasFeature(featureData, flag) {
   if (!featureData || !Array.isArray(featureData.features)) return false;
   return featureData.features.includes(flag);
+}
+
+function getCachedFirstName(featureData) {
+  return featureData?.firstName || '';
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────

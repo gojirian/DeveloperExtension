@@ -237,7 +237,7 @@ async function fetchNotifications(token, lastModified) {
     headers['If-Modified-Since'] = lastModified;
   }
 
-  const res = await fetch(`${GITHUB_REST}/notifications?all=false&per_page=50`, { headers });
+  const res = await fetch(`${GITHUB_REST}/notifications?participating=true&all=true&per_page=50`, { headers });
 
   if (res.status === 304) {
     return null;
@@ -326,6 +326,32 @@ function buildNotificationHtmlUrl(thread) {
     return `https://github.com${path}`;
   } catch (_) {
     return `https://github.com/${repo}`;
+  }
+}
+
+// ── Mark notification as done ────────────────────────────────────────
+
+async function markNotificationDone(threadId) {
+  const cfg = await getGitHubConfig();
+  if (!cfg.token) throw new Error('GitHub not configured');
+
+  const res = await fetch(`${GITHUB_REST}/notifications/threads/${threadId}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${cfg.token}`,
+      Accept: 'application/vnd.github+json'
+    }
+  });
+  if (!res.ok && res.status !== 205) {
+    throw new Error(`Failed to mark notification done: ${res.status}`);
+  }
+
+  // Remove thread from cached notifications
+  const cached = await getCachedNotifications();
+  if (cached && cached.threads) {
+    cached.threads = cached.threads.filter((t) => t.id !== threadId);
+    cached.totalUnread = cached.threads.filter((t) => t.unread).length;
+    await storageSet({ [STORAGE_GITHUB_NOTIF_CACHE]: cached });
   }
 }
 
