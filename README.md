@@ -7,7 +7,14 @@ A browser extension with a set of tools to help developers be more productive.
 - Custom new tab page with developer tools
 - Options page for configuration
 - Content scripts for enhanced browsing
+- Gmail "Semi-Dark" theme — dark chrome (top bar, sidebar, rails, Tasks panel) with light mail content
 - Cross-browser compatibility (Chrome, Edge, Firefox)
+
+### Gmail Semi-Dark Theme
+
+The extension injects CSS into `mail.google.com` (and the `tasks.google.com` side-panel iframe) to restyle Gmail with dark edges and a light mail area. Design source of truth: `design_handoff_gmail_semidark/`.
+
+**Precondition:** Gmail's own theme must be set to **Default (light)** in Gmail Settings → Theme. The styling layers on top of the light theme; combining it with Gmail's dark theme will double-darken the UI. Density settings are unaffected.
 
 ## Development
 
@@ -69,8 +76,12 @@ When this secret is configured, the workflow will create an additional signed Ch
 ```
 ├── manifest.json           # Chrome/Edge manifest (v3)
 ├── src/
-│   ├── content.css        # Content script styles
-│   ├── content.js         # Content script functionality
+│   ├── content.css        # Content script styles (GitHub)
+│   ├── content.js         # Content script functionality (GitHub)
+│   ├── gmail-theme.css    # Gmail Semi-Dark theme (mail.google.com)
+│   ├── gmail-tasks-panel.css  # Gmail Tasks side-panel theme (tasks.google.com iframe)
+│   ├── gmail-calendar-panel.css  # Calendar companion-panel theme (iframe only)
+│   ├── gmail-companion-frame.js  # Tags Calendar iframe so the full site stays stock
 │   ├── newtab.html        # New tab page
 │   ├── newtab.js          # New tab page functionality
 │   ├── options.html       # Options page

@@ -1,0 +1,53 @@
+/* ==========================================================================
+   Gmail Semi-Dark — tasks-panel.css (tasks.google.com iframe)
+   The Tasks side panel is a cross-origin iframe; this sheet is injected
+   into tasks.google.com with all_frames: true. Spec: README §5.5.
+   Selectors are placeholders — VERIFY against the live iframe DOM.
+   ========================================================================== */
+
+:root {
+  color-scheme: only dark;
+  --gsd-panel:         #232e39;
+  --gsd-accent:        #ffc700;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-link-dark:     #7eb8ff;
+}
+
+html, body { /* VERIFY: may need Gmail-companion-specific wrappers */
+  background: var(--gsd-panel) !important;
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Headings / "My Tasks" switcher */
+h1, h2, [role="heading"] {
+  color: var(--gsd-edge-text) !important;
+}
+
+/* "Add a task" affordance */
+[role="button"][aria-label*="Add a task"] { /* VERIFY */
+  color: var(--gsd-accent) !important;
+  font-weight: 600 !important;
+}
+
+/* Task titles + secondary text */
+[role="listitem"] {
+  border-color: rgba(255, 255, 255, 0.07) !important;
+}
+[role="listitem"] * {
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Links inside tasks */
+a { color: var(--gsd-link-dark) !important; }
+
+/* Due-date chips */
+[aria-label*="due" i], .due-chip { /* VERIFY */
+  color: var(--gsd-accent) !important;
+  border-color: var(--gsd-accent) !important;
+}
+
+/* Completion circles */
+[role="checkbox"] {
+  border-color: rgba(214, 218, 224, 0.45) !important;
+}

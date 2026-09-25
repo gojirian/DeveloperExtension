@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Gmail Semi-Dark — Calendar side panel (https://calendar.google.com/*)
+   Injected with all_frames: true; every rule is scoped to
+   html[data-gsd-companion], which gmail-companion-frame.js sets ONLY when
+   Calendar is running inside an iframe (the Gmail companion panel). The
+   full Calendar site stays stock.
+
+   Same broad strategy as the Tasks panel: dark surface, flatten light
+   backgrounds, force light text, re-apply accent/secondary colors.
+   ========================================================================== */
+
+html[data-gsd-companion] {
+  color-scheme: only dark;
+  --gsd-panel:         #232e39;
+  --gsd-panel-raised:  #2b3642;
+  --gsd-accent:        #ffc700;
+  --gsd-on-accent:     #20242a;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-link-dark:     #7eb8ff;
+  --gsd-divider:       rgba(255, 255, 255, 0.07);
+}
+
+html[data-gsd-companion],
+html[data-gsd-companion] body {
+  background: var(--gsd-panel) !important;
+  color: var(--gsd-edge-text) !important;
+  border-radius: 0 !important;
+}
+
+/* Square top — companion panel host on mail.google.com rounds the iframe */
+html[data-gsd-companion],
+html[data-gsd-companion] body,
+html[data-gsd-companion] body > div {
+  border-top-left-radius: 0 !important;
+  border-top-right-radius: 0 !important;
+  border-radius: 0 !important;
+}
+
+/* Flatten light surfaces; menus/dialogs re-surfaced below */
+html[data-gsd-companion] body div:not([role="menu"]):not([role="dialog"]):not([role="listbox"]) {
+  background-color: transparent !important;
+}
+
+/* Force text light */
+html[data-gsd-companion] body * {
+  color: var(--gsd-edge-text) !important;
+}
+
+html[data-gsd-companion] [role="menu"],
+html[data-gsd-companion] [role="dialog"],
+html[data-gsd-companion] [role="listbox"] {
+  background: var(--gsd-panel-raised) !important;
+}
+
+/* Icons */
+html[data-gsd-companion] body svg {
+  color: var(--gsd-edge-text-dim) !important;
+  fill: var(--gsd-edge-text-dim) !important;
+}
+
+/* Links */
+html[data-gsd-companion] body a,
+html[data-gsd-companion] body a * {
+  color: var(--gsd-link-dark) !important;
+}
+
+/* Hairlines between agenda items */
+html[data-gsd-companion] [role="listitem"],
+html[data-gsd-companion] hr {
+  border-color: var(--gsd-divider) !important;
+}
+
+/* "Today" / selected day chip: accent. Event color swatches are left
+   untouched (they're backgrounds on small fixed-size elements Gmail users
+   rely on for calendar identity). */
+html[data-gsd-companion] [aria-current="date"],
+html[data-gsd-companion] [aria-selected="true"] { /* VERIFY */
+  background: var(--gsd-accent) !important;
+  color: var(--gsd-on-accent) !important;
+}
+
+/* Text inputs */
+html[data-gsd-companion] input,
+html[data-gsd-companion] textarea {
+  background: transparent !important;
+  color: var(--gsd-edge-text) !important;
+}
+html[data-gsd-companion] input::placeholder {
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* Scrollbar */
+html[data-gsd-companion] ::-webkit-scrollbar { width: 10px; }
+html[data-gsd-companion] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 5px;
+}

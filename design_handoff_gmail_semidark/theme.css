@@ -1,0 +1,184 @@
+/* ==========================================================================
+   Gmail Semi-Dark — theme.css (mail.google.com)
+   Tokens are FINAL (user-approved). Selectors marked VERIFY must be checked
+   against the live Gmail DOM in DevTools before shipping — Gmail's class
+   names churn. Prefer role/aria selectors where they exist.
+   ========================================================================== */
+
+:root {
+  color-scheme: only light;
+
+  /* Edge shades (darkest → lightest) */
+  --gsd-rail:  #151c24;
+  --gsd-side:  #1f2933;
+  --gsd-top:   #28333f;
+  --gsd-panel: #232e39;
+
+  /* Accent */
+  --gsd-accent:      #ffc700;
+  --gsd-accent-soft: rgba(255, 199, 0, 0.16);
+  --gsd-accent-text: #ffd84d;
+  --gsd-on-accent:   #20242a;
+
+  /* Light content */
+  --gsd-content:   #f4f4f3;
+  --gsd-row:       #fdfdfc;
+  --gsd-zebra:     rgba(31, 41, 51, 0.044);
+  --gsd-row-hover: rgba(31, 41, 51, 0.045);
+  --gsd-unread-bg: #ffffff;
+  --gsd-sel-bg:    #fff7dc;
+  --gsd-hairline:  rgba(31, 41, 51, 0.08);
+
+  /* Text */
+  --gsd-ink:           #1f2328;
+  --gsd-ink-2:         #5a6068;
+  --gsd-edge-text:     #d6dae0;
+  --gsd-edge-text-dim: #9aa3ad;
+  --gsd-edge-hover:    rgba(255, 255, 255, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   1. TOP BAR  (#gb is Google's app bar — long-stable)
+   -------------------------------------------------------------------------- */
+#gb { /* VERIFY */
+  background: var(--gsd-top) !important;
+}
+#gb form[role="search"],
+#gb [role="search"] { /* VERIFY: search pill wrapper */
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  border-radius: 19px !important;
+}
+#gb form[role="search"] input { /* VERIFY */
+  color: var(--gsd-edge-text) !important;
+}
+#gb form[role="search"] input::placeholder {
+  color: var(--gsd-edge-text-dim) !important;
+}
+#gb svg, #gb [role="button"] { /* top bar icons */
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. LEFT MINI RAIL (Mail / Chat / Meet)  — VERIFY container class
+   -------------------------------------------------------------------------- */
+.aeN ~ .aBA, /* VERIFY: rail container candidates */
+div[role="navigation"][aria-label*="Main"] { /* VERIFY */
+  background: var(--gsd-rail) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. LEFT SIDEBAR (Compose, folders, labels)
+   -------------------------------------------------------------------------- */
+.aeN { /* VERIFY: left nav container */
+  background: var(--gsd-side) !important;
+}
+/* Compose button */
+.T-I.T-I-KE.L3 { /* VERIFY */
+  background: var(--gsd-accent) !important;
+  color: var(--gsd-on-accent) !important;
+  font-weight: 600 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+/* Nav items */
+.aeN .TO { /* VERIFY: nav row */ }
+.aeN .TO .nU, .aeN .aio { /* VERIFY: nav/label text */
+  color: var(--gsd-edge-text-dim) !important;
+}
+.aeN .TO:hover {
+  background: var(--gsd-edge-hover) !important;
+}
+/* Active nav item (e.g. Inbox) */
+.aeN .TO.nZ.aiq { /* VERIFY */
+  background: var(--gsd-accent-soft) !important;
+}
+.aeN .TO.nZ.aiq .nU, .aeN .TO.nZ.aiq .bsU {
+  color: var(--gsd-accent-text) !important;
+  font-weight: 600 !important;
+}
+.aeN .bsU { /* unread counts */
+  color: var(--gsd-edge-text-dim) !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. MAIL LIST AREA — STAYS LIGHT
+   -------------------------------------------------------------------------- */
+div[role="main"] {
+  background: var(--gsd-content) !important;
+}
+/* List toolbar (select-all / refresh / more) */
+.aeH, .G-atb { /* VERIFY */
+  background: var(--gsd-content) !important;
+  border-bottom: 1px solid var(--gsd-hairline) !important;
+}
+
+/* Column / section headers ("Inbox", "Today", …) — DARK strips.
+   VERIFY: inspect the multiple-inboxes section title wrappers. */
+.Wg, .ae4 .Wv { /* VERIFY — placeholder candidates */
+  background: var(--gsd-top) !important;
+  color: var(--gsd-edge-text) !important;
+}
+
+/* Rows */
+tr.zA {
+  background: var(--gsd-row) !important;
+}
+tr.zA:nth-child(even) {
+  background: linear-gradient(var(--gsd-zebra), var(--gsd-zebra)),
+              var(--gsd-row) !important;
+}
+tr.zA:hover {
+  box-shadow: inset 0 0 0 100vmax var(--gsd-row-hover) !important;
+}
+/* Unread: white bg + 3px accent bar + bold */
+tr.zA.zE {
+  background: var(--gsd-unread-bg) !important;
+  box-shadow: inset 3px 0 0 var(--gsd-accent) !important;
+}
+tr.zA.zE .yW, tr.zA.zE .bog, tr.zA.zE .xW span {
+  font-weight: 700 !important;
+  color: var(--gsd-ink) !important;
+}
+/* Selected / focused row */
+tr.zA.x7, tr.zA.aps { /* VERIFY: selected-row classes */
+  background: var(--gsd-sel-bg) !important;
+  box-shadow: inset 3px 0 0 var(--gsd-accent) !important;
+}
+/* Secondary text */
+tr.zA .y2 { color: var(--gsd-ink-2) !important; }
+/* Label chips on rows */
+tr.zA .ar .at { /* VERIFY */
+  background: rgba(31, 41, 51, 0.08) !important;
+  border-radius: 4px !important;
+}
+tr.zA .ar .at .av { color: var(--gsd-ink-2) !important; }
+/* Stars + importance markers — unify on accent when filled */
+tr.zA .T-KT-Jp svg, /* VERIFY: starred */
+tr.zA .pG svg { /* VERIFY: important marker */
+  color: var(--gsd-accent) !important;
+  fill: var(--gsd-accent) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. FAR-RIGHT ADD-ON RAIL
+   -------------------------------------------------------------------------- */
+.brC-aT5-aOt-Jw { /* VERIFY — churns often */
+  background: var(--gsd-rail) !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. SCROLLBARS
+   -------------------------------------------------------------------------- */
+div[role="main"] ::-webkit-scrollbar-thumb {
+  background: rgba(120, 128, 138, 0.4) !important;
+  border-radius: 5px;
+}
+.aeN ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 5px;
+}
+
+/* --------------------------------------------------------------------------
+   NEVER touch: avatars, contact photos, inline images, attachment previews.
+   Reading pane and compose stay light/stock by design.
+   -------------------------------------------------------------------------- */

@@ -33,6 +33,39 @@
       "js": ["src/content.js"],
       "css": ["src/content.css"],
       "run_at": "document_end"
+    },
+    {
+      "matches": ["https://mail.google.com/*"],
+      "css": ["src/gmail-theme.css"],
+      "js": ["src/gmail-theme.js"],
+      "run_at": "document_start"
+    },
+    {
+      "matches": ["https://meet.google.com/*"],
+      "css": ["src/gmail-meet-sidebar.css"],
+      "js": ["src/gmail-meet-sidebar.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://chat.google.com/*", "https://mail.google.com/chat/*"],
+      "css": ["src/gmail-chat-roster.css"],
+      "js": ["src/gmail-chat-roster.js"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://tasks.google.com/*"],
+      "css": ["src/gmail-tasks-panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
+    },
+    {
+      "matches": ["https://calendar.google.com/*"],
+      "js": ["src/gmail-companion-frame.js"],
+      "css": ["src/gmail-calendar-panel.css"],
+      "run_at": "document_start",
+      "all_frames": true
     }
   ]
 }
