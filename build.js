@@ -4,6 +4,48 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const sharp = require('sharp');
+const archiver = require('archiver');
+
+function rmrfSync(dir) {
+  if (fs.existsSync(dir)) {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+function copyDirSync(src, dest) {
+  fs.mkdirSync(dest, { recursive: true });
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+    if (entry.isDirectory()) {
+      copyDirSync(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
+function copyFileOrDirSync(src, destDir) {
+  const dest = path.join(destDir, path.basename(src));
+  const stat = fs.statSync(src);
+  if (stat.isDirectory()) {
+    copyDirSync(src, dest);
+  } else {
+    fs.copyFileSync(src, dest);
+  }
+}
+
+function zipDirectory(sourceDir, outPath) {
+  return new Promise((resolve, reject) => {
+    const output = fs.createWriteStream(outPath);
+    const archive = archiver('zip', { zlib: { level: 9 } });
+    output.on('close', resolve);
+    archive.on('error', reject);
+    archive.pipe(output);
+    archive.directory(sourceDir, false);
+    archive.finalize();
+  });
+}
 
 const ICON_SIZES = [16, 32, 48, 128];
 const ICON_SVG = path.join(__dirname, 'icons', 'icon.svg');
@@ -73,26 +115,26 @@ async function build() {
   }
 
   // Clean previous builds
-  if (fs.existsSync('dist')) {
-    execSync('rm -rf dist/*');
-  }
+  rmrfSync('dist');
 
   // Build Chrome/Edge version
   console.log('Building Chrome/Edge version...');
-  fs.mkdirSync('dist/chrome-edge', { recursive: true });
-  execSync('cp -r manifest.json background.js src icons dist/chrome-edge/');
-  process.chdir('dist/chrome-edge');
-  execSync(`zip -r ../chrome-edge-extension-v${version}.zip .`);
-  process.chdir('../..');
+  const chromeDir = path.join('dist', 'chrome-edge');
+  fs.mkdirSync(chromeDir, { recursive: true });
+  for (const item of ['manifest.json', 'background.js', 'src', 'icons']) {
+    copyFileOrDirSync(item, chromeDir);
+  }
+  await zipDirectory(chromeDir, path.join('dist', `chrome-edge-extension-v${version}.zip`));
 
   // Build Firefox version
   console.log('Building Firefox version...');
-  fs.mkdirSync('dist/firefox', { recursive: true });
-  fs.writeFileSync('dist/firefox/manifest.json', JSON.stringify(firefoxManifest, null, 2));
-  execSync('cp -r background.js src icons dist/firefox/');
-  process.chdir('dist/firefox');
-  execSync(`zip -r ../firefox-addon-v${version}.zip .`);
-  process.chdir('../..');
+  const firefoxDir = path.join('dist', 'firefox');
+  fs.mkdirSync(firefoxDir, { recursive: true });
+  fs.writeFileSync(path.join(firefoxDir, 'manifest.json'), JSON.stringify(firefoxManifest, null, 2));
+  for (const item of ['background.js', 'src', 'icons']) {
+    copyFileOrDirSync(item, firefoxDir);
+  }
+  await zipDirectory(firefoxDir, path.join('dist', `firefox-addon-v${version}.zip`));
 
   console.log('Build complete!');
   console.log('Generated files:');
